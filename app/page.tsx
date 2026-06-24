@@ -23,6 +23,20 @@ export default function Home() {
     finally { setLoading(false); }
   }
 
+  const sections = result?.explanation
+    ? result.explanation.split('\n').reduce((acc: string[][], line: string) => {
+        if (line.trim() === '') {
+          if (acc[acc.length - 1]?.length > 0) acc.push([]);
+        } else {
+          if (!acc.length) acc.push([]);
+          acc[acc.length - 1].push(line.trim());
+        }
+        return acc;
+      }, [[]])
+      .filter((s: string[]) => s.length > 0)
+      .map((s: string[]) => s.join(' '))
+    : [];
+
   return (
     <main className={styles.main}>
       <div className={styles.container}>
@@ -38,10 +52,17 @@ export default function Home() {
             <div className={styles.cardHeader}>
               <span className={styles.repoName}>{result.meta?.name}</span>
               {result.meta?.language && <span className={styles.lang}>{result.meta.language}</span>}
+              {result.meta?.updatedAt && (
+                <span className={styles.updated}>
+                  updated {new Date(result.meta.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              )}
             </div>
-            <div className={styles.explanation}>
-              {result.explanation.split('\n').filter((p: string) => p.trim()).map((p: string, i: number) => (
-                <p key={i} style={{marginBottom: '16px', lineHeight: '1.7'}}>{p}</p>
+            <div className={styles.sections}>
+              {sections.map((section: string, i: number) => (
+                <div key={i} className={styles.section}>
+                  <p>{section}</p>
+                </div>
               ))}
             </div>
           </div>
