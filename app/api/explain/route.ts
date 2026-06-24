@@ -36,18 +36,22 @@ export async function POST(req: NextRequest) {
 
     const commits = commitsData.slice(0, 3).map((c: any) => ({
       message: c.commit.message,
-      date: c.commit.author.date,
+      date: new Date(c.commit.author.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     }));
 
     const prompt = `You explain GitHub repos to people who know nothing about code. Write like you're texting a smart friend, not writing a tech article. No jargon. No bullet points.
 
-Cover four things in plain paragraph form:
-1. What this repo actually is and who it's for
-2. Why it matters to someone holding the CLAWD token specifically
-3. Whether it looks alive or abandoned based on the commit dates
-4. What the last 3 commits mean in plain English — what actually changed and why it matters
+Cover these four things, each as its own short paragraph with a blank line between them:
 
-Keep the whole thing under 200 words.
+1. What this repo actually is and who it's for.
+
+2. Why it matters to someone holding the CLAWD token specifically.
+
+3. Whether it looks alive or abandoned based on the commit dates.
+
+4. What the last 3 commits mean in plain English — what actually changed and why it matters. Put the date next to each one.
+
+Keep the whole thing under 250 words. Put a blank line between each section.
 
 Repo name: ${repoData.name}
 Description: ${repoData.description || 'No description'}
