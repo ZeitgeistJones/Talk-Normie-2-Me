@@ -9,6 +9,17 @@ function parseGitHubUrl(url: string) {
   return { owner: match[1], repo: match[2].replace('.git', '') };
 }
 
+async function fetchChronicle(githubHeaders: Record<string, string>): Promise<string> {
+  try {
+    const res = await fetch('https://api.github.com/repos/clawdbotatg/clawd-chronicle/contents/clawdbotatg-overview.md', { headers: githubHeaders });
+    if (!res.ok) return '';
+    const data = await res.json();
+    return Buffer.from(data.content, 'base64').toString('utf-8').slice(0, 2000);
+  } catch {
+    return '';
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { url } = await req.json();
@@ -18,10 +29,11 @@ export async function POST(req: NextRequest) {
     const headers: Record<string, string> = { 'Accept': 'application/vnd.github.v3+json' };
     if (process.env.GITHUB_TOKEN) headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
 
-    const [repoRes, commitsRes, readmeRes] = await Promise.all([
+    const [repoRes, commitsRes, readmeRes, chronicle] = await Promise.all([
       fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers }),
       fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=3`, { headers }),
       fetch(`https://api.github.com/repos/${owner}/${repo}/readme`, { headers }),
+      fetchChronicle(headers),
     ]);
 
     if (!repoRes.ok) return NextResponse.json({ error: 'Repo not found or is private' }, { status: 404 });
@@ -41,11 +53,14 @@ export async function POST(req: NextRequest) {
 
     const prompt = `You explain GitHub repos to people who know nothing about code. Write like you're texting a smart friend, not writing a tech article. No jargon. No bullet points.
 
+Here is background context about CLAWD and the ecosystem this repo belongs to:
+${chronicle}
+
 Cover these four things, each as its own short paragraph with a blank line between them:
 
 1. What this repo actually is and who it's for.
 
-2. Why it matters to someone holding the CLAWD token specifically.
+2. Why it matters to someone holding the CLAWD token specifically. Use the chronicle context above to make this accurate and specific.
 
 3. Whether it looks alive or abandoned based on the commit dates.
 
