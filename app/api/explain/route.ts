@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Anthropic from '@anthropic-ai/sdk';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function parseGitHubUrl(url: string) {
   const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
@@ -37,11 +37,9 @@ export async function POST(req: NextRequest) {
     const commits = commitsData.slice(0, 3).map((c: any) => ({
       message: c.commit.message,
       date: c.commit.author.date,
-      author: c.commit.author.name,
     }));
 
-    const prompt = `
-You explain GitHub repos to people who know nothing about code. Write like you're texting a smart friend, not writing a tech article. No jargon. No bullet points.
+    const prompt = `You explain GitHub repos to people who know nothing about code. Write like you're texting a smart friend, not writing a tech article. No jargon. No bullet points.
 
 Cover four things in plain paragraph form:
 1. What this repo actually is and who it's for
@@ -54,19 +52,21 @@ Keep the whole thing under 200 words.
 Repo name: ${repoData.name}
 Description: ${repoData.description || 'No description'}
 Last updated: ${repoData.updated_at}
-Stars: ${repoData.stargazers_count}
 Language: ${repoData.language}
 
 README:
 ${readmeText}
 
 Last 3 commits:
-${commits.map((c: any, i: number) => `${i + 1}. "${c.message}" — ${c.date}`).join('\n')}
-`;
+${commits.map((c: any, i: number) => `${i + 1}. "${c.message}" — ${c.date}`).join('\n')}`;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const text = message.content[0].type === 'text' ? message.content[0].text : '';
 
     return NextResponse.json({
       explanation: text,
