@@ -10,7 +10,11 @@
 .button:hover:not(:disabled) { background: #89b0ff; }
 .error { color: #ff6b6b; background: #1a0a0a; border: 1px solid #ff6b6b33; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; }
 .card { background: #111; border: 1px solid #222; border-radius: 12px; padding: 24px; }
-.cardHeader { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.cardHeader { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
 .repoName { color: #6b9bff; font-weight: 700; font-size: 1.1rem; }
 .lang { background: #1e1e1e; color: #888; padding: 2px 10px; border-radius: 20px; font-size: 0.8rem; }
-.explanation { color: #ccc; line-height: 1.7; font-size: 0.95rem; margin: 0; white-space: pre-wrap; }
+.updated { color: #555; font-size: 0.8rem; margin-left: auto; }
+.sections { display: flex; flex-direction: column; gap: 0; }
+.section { padding: 16px 0; border-bottom: 1px solid #1e1e1e; }
+.section:last-child { border-bottom: none; padding-bottom: 0; }
+.section p { color: #ccc; line-height: 1.75; font-size: 0.95rem; margin: 0; }
