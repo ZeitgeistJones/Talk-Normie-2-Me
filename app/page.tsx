@@ -39,7 +39,11 @@ export default function Home() {
               <span className={styles.repoName}>{result.meta?.name}</span>
               {result.meta?.language && <span className={styles.lang}>{result.meta.language}</span>}
             </div>
-            <p className={styles.explanation}>{result.explanation}</p>
+            <div className={styles.explanation}>
+              {result.explanation.split('\n').filter((p: string) => p.trim()).map((p: string, i: number) => (
+                <p key={i} style={{marginBottom: '16px', lineHeight: '1.7'}}>{p}</p>
+              ))}
+            </div>
           </div>
         )}
       </div>
