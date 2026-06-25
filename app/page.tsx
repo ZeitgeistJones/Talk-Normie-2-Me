@@ -32,11 +32,10 @@ const MODES: { id: PersonalityMode; label: string; emoji: string }[] = [
   { id: 'conspiracy',  label: 'Conspiracy',  emoji: '🕵️' },
 ];
 
-// Strips lines like "Section 1: ..." or "**Section 2: ...**" from the start of a block
 function stripSectionLabel(text: string): string {
   return text
     .replace(/^\*?\*?Section\s+\d+[:\s][^\n]*\*?\*?\s*/i, '')
-    .replace(/^\*\*[^*]+\*\*\s*/, '') // strip any leading bold line
+    .replace(/^\*\*[^*]+\*\*\s*/, '')
     .trim();
 }
 
@@ -72,8 +71,6 @@ function App() {
   const [useCount, setUseCount] = useState(0);
   const [showWall, setShowWall] = useState(false);
   const [mode, setMode] = useState<PersonalityMode>('normie');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const cache: Record<string, any> = {};
 
   const { address, isConnected } = useAccount();
@@ -108,17 +105,6 @@ function App() {
     }
   }, [browseOpen]);
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
   const isJob = (name: string, description?: string) =>
     name.startsWith('leftclaw-service-job') ||
     name.startsWith('cv-') ||
@@ -132,6 +118,13 @@ function App() {
       r.name.toLowerCase().includes(search.toLowerCase()) ||
       (r.description || '').toLowerCase().includes(search.toLowerCase())
     );
+
+  function cycleMode() {
+    const idx = MODES.findIndex(m => m.id === mode);
+    const next = MODES[(idx + 1) % MODES.length];
+    setMode(next.id);
+    setResult(null);
+  }
 
   async function handleSubmit(repoUrl?: string) {
     const target = repoUrl || url;
@@ -211,7 +204,18 @@ function App() {
               </div>
               <div className={dark ? styles.bubbleSmallDark : styles.bubbleSmallLight} />
             </div>
-            <span className={dark ? styles.logoTextDark : styles.logoTextLight}>Talk Normie 2 Me</span>
+            {/* Logo title with clickable mode word */}
+            <span className={dark ? styles.logoTextDark : styles.logoTextLight}>
+              Talk{' '}
+              <button
+                className={dark ? styles.modeWordDark : styles.modeWordLight}
+                onClick={cycleMode}
+                title={`Switch mode (currently ${currentMode.label})`}
+              >
+                {currentMode.label}
+              </button>
+              {' '}2 Me
+            </span>
           </div>
           <div className={styles.headerRight}>
             <button
@@ -231,36 +235,9 @@ function App() {
           </div>
         </div>
 
-        {/* Tagline + mode picker on same line */}
-        <div className={styles.taglineRow}>
-          <span className={dark ? styles.taglineDark : styles.taglineLight}>
-            {dark ? 'Still plain English, just darker.' : 'Paste any GitHub link. Get a plain English breakdown.'}
-          </span>
-          <div className={styles.modePickerWrap} ref={dropdownRef}>
-            <button
-              className={dark ? styles.modePickerDark : styles.modePickerLight}
-              onClick={() => setDropdownOpen(o => !o)}
-            >
-              explaining as: <span className={styles.modePickerName}>{currentMode.emoji} {currentMode.label}</span>
-              <span className={styles.modePickerCaret}>{dropdownOpen ? '▴' : '▾'}</span>
-            </button>
-            {dropdownOpen && (
-              <div className={dark ? styles.modeDropdownDark : styles.modeDropdownLight}>
-                {MODES.map(m => (
-                  <button
-                    key={m.id}
-                    className={`${dark ? styles.modeOptionDark : styles.modeOptionLight} ${mode === m.id ? (dark ? styles.modeOptionActiveDark : styles.modeOptionActiveLight) : ''}`}
-                    onClick={() => { setMode(m.id); setResult(null); setDropdownOpen(false); }}
-                  >
-                    <span>{m.emoji}</span>
-                    <span>{m.label}</span>
-                    {mode === m.id && <span className={styles.modeOptionCheck}>✓</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <p className={dark ? styles.taglineDark : styles.taglineLight}>
+          {dark ? 'Still plain English, just darker.' : 'Paste any GitHub link. Get a plain English breakdown.'}
+        </p>
 
         {browseOpen && (
           <p className={dark ? styles.clawdHintDark : styles.clawdHintLight}>
