@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAccount, useReadContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Providers } from './providers';
@@ -18,10 +18,10 @@ const CLAWD_GATE_ABI = [
 
 const FREE_LIMIT = 2;
 
-type PersonalityMode = 'default' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku';
+type PersonalityMode = 'normie' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku';
 
 const MODES: { id: PersonalityMode; label: string; emoji: string }[] = [
-  { id: 'default',     label: 'Normal',      emoji: '💬' },
+  { id: 'normie',      label: 'Normie',      emoji: '💬' },
   { id: 'fullnormie',  label: 'Full Normie', emoji: '🧠' },
   { id: 'bro',         label: 'Bro',         emoji: '💪' },
   { id: 'flirty',      label: 'Flirty',      emoji: '😘' },
@@ -31,6 +31,14 @@ const MODES: { id: PersonalityMode; label: string; emoji: string }[] = [
   { id: 'otaku',       label: 'Otaku',       emoji: '⚡' },
   { id: 'conspiracy',  label: 'Conspiracy',  emoji: '🕵️' },
 ];
+
+// Strips lines like "Section 1: ..." or "**Section 2: ...**" from the start of a block
+function stripSectionLabel(text: string): string {
+  return text
+    .replace(/^\*?\*?Section\s+\d+[:\s][^\n]*\*?\*?\s*/i, '')
+    .replace(/^\*\*[^*]+\*\*\s*/, '') // strip any leading bold line
+    .trim();
+}
 
 type Repo = {
   name: string;
@@ -63,7 +71,9 @@ function App() {
   const [dark, setDark] = useState(false);
   const [useCount, setUseCount] = useState(0);
   const [showWall, setShowWall] = useState(false);
-  const [mode, setMode] = useState<PersonalityMode>('default');
+  const [mode, setMode] = useState<PersonalityMode>('normie');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const cache: Record<string, any> = {};
 
   const { address, isConnected } = useAccount();
@@ -97,6 +107,17 @@ function App() {
         .catch(() => setReposLoading(false));
     }
   }, [browseOpen]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const isJob = (name: string, description?: string) =>
     name.startsWith('leftclaw-service-job') ||
@@ -146,20 +167,35 @@ function App() {
   }
 
   const sections = result?.explanation
-    ? result.explanation.split('\n').reduce((acc: string[][], line: string) => {
-        if (line.trim() === '') {
-          if (acc[acc.length - 1]?.length > 0) acc.push([]);
-        } else {
-          if (!acc.length) acc.push([]);
-          acc[acc.length - 1].push(line.trim());
-        }
-        return acc;
-      }, [[]])
-      .filter((s: string[]) => s.length > 0)
-      .map((s: string[]) => s.join(' '))
+    ? result.explanation
+        .split('\n')
+        .reduce((acc: string[][], line: string) => {
+          if (line.trim() === '') {
+            if (acc[acc.length - 1]?.length > 0) acc.push([]);
+          } else {
+            if (!acc.length) acc.push([]);
+            acc[acc.length - 1].push(line.trim());
+          }
+          return acc;
+        }, [[]])
+        .filter((s: string[]) => s.length > 0)
+        .map((s: string[]) => stripSectionLabel(s.join(' ')))
+        .filter((s: string) => s.length > 0)
     : [];
 
   const currentMode = MODES.find(m => m.id === mode)!;
+
+  const thinkingMessages: Record<PersonalityMode, string> = {
+    normie:     'Thinking...',
+    fullnormie: 'Making it super simple...',
+    flirty:     'Sliding into your DMs...',
+    emo:        'Staring into the void...',
+    bro:        'Getting gains on this...',
+    conspiracy: 'Following the threads...',
+    brainrot:   'Cooking fr fr...',
+    sporty:     'Warming up...',
+    otaku:      'Entering the arc...',
+  };
 
   return (
     <main className={dark ? styles.mainDark : styles.mainLight}>
@@ -195,27 +231,35 @@ function App() {
           </div>
         </div>
 
-        <p className={dark ? styles.taglineDark : styles.taglineLight}>
-          {dark ? 'Still plain English, just darker.' : 'Paste any GitHub link. Get a plain English breakdown.'}
-        </p>
-
-        {/* Mode Selector */}
-        <div className={dark ? styles.modeSelectorDark : styles.modeSelectorLight}>
-          {MODES.map(m => (
+        {/* Tagline + mode picker on same line */}
+        <div className={styles.taglineRow}>
+          <span className={dark ? styles.taglineDark : styles.taglineLight}>
+            {dark ? 'Still plain English, just darker.' : 'Paste any GitHub link. Get a plain English breakdown.'}
+          </span>
+          <div className={styles.modePickerWrap} ref={dropdownRef}>
             <button
-              key={m.id}
-              onClick={() => { setMode(m.id); setResult(null); }}
-              className={
-                mode === m.id
-                  ? (dark ? styles.modeChipActiveDark : styles.modeChipActiveLight)
-                  : (dark ? styles.modeChipDark : styles.modeChipLight)
-              }
-              title={m.label}
+              className={dark ? styles.modePickerDark : styles.modePickerLight}
+              onClick={() => setDropdownOpen(o => !o)}
             >
-              <span>{m.emoji}</span>
-              <span>{m.label}</span>
+              explaining as: <span className={styles.modePickerName}>{currentMode.emoji} {currentMode.label}</span>
+              <span className={styles.modePickerCaret}>{dropdownOpen ? '▴' : '▾'}</span>
             </button>
-          ))}
+            {dropdownOpen && (
+              <div className={dark ? styles.modeDropdownDark : styles.modeDropdownLight}>
+                {MODES.map(m => (
+                  <button
+                    key={m.id}
+                    className={`${dark ? styles.modeOptionDark : styles.modeOptionLight} ${mode === m.id ? (dark ? styles.modeOptionActiveDark : styles.modeOptionActiveLight) : ''}`}
+                    onClick={() => { setMode(m.id); setResult(null); setDropdownOpen(false); }}
+                  >
+                    <span>{m.emoji}</span>
+                    <span>{m.label}</span>
+                    {mode === m.id && <span className={styles.modeOptionCheck}>✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {browseOpen && (
@@ -234,7 +278,7 @@ function App() {
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
           />
           <button className={dark ? styles.buttonDark : styles.buttonLight} onClick={() => handleSubmit()} disabled={loading}>
-            {loading ? 'Thinking...' : `Explain ${currentMode.emoji}`}
+            {loading ? 'Thinking...' : 'Explain'}
           </button>
         </div>
 
@@ -290,15 +334,7 @@ function App() {
         {error && <div className={dark ? styles.errorDark : styles.errorLight}>{error}</div>}
         {loading && (
           <div className={dark ? styles.thinkingDark : styles.thinkingLight}>
-            {mode === 'fullnormie' && 'Making it super simple...'}
-            {mode === 'flirty' && 'Sliding into your DMs...'}
-            {mode === 'emo' && 'Staring into the void...'}
-            {mode === 'bro' && 'Getting gains on this explanation...'}
-            {mode === 'conspiracy' && 'Following the threads...'}
-            {mode === 'brainrot' && 'Cooking fr fr...'}
-            {mode === 'sporty' && 'Warming up...'}
-            {mode === 'otaku' && 'Entering the arc...'}
-            {mode === 'default' && 'Thinking...'}
+            {thinkingMessages[mode]}
           </div>
         )}
 
@@ -307,7 +343,7 @@ function App() {
             <div className={dark ? styles.resultTopDark : styles.resultTopLight}>
               <span className={dark ? styles.resultNameDark : styles.resultNameLight}>{result.meta?.name}</span>
               {result.meta?.language && <span className={dark ? styles.badgeDark : styles.badgeLight}>{result.meta.language}</span>}
-              {mode !== 'default' && (
+              {mode !== 'normie' && (
                 <span className={dark ? styles.modeBadgeDark : styles.modeBadgeLight}>
                   {currentMode.emoji} {currentMode.label}
                 </span>
