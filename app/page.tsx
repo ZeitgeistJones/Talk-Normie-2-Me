@@ -39,6 +39,19 @@ function stripSectionLabel(text: string): string {
     .trim();
 }
 
+// Splits a block of text into separate lines wherever a "COMMIT N:" marker
+// starts, even if the model ran everything together without real line breaks.
+// This makes commit rendering robust regardless of how the model formats
+// whitespace, since we no longer rely on blank-line paragraph splitting for
+// the individual commits within the "Recent commits" section.
+function splitCommitLines(text: string): string[] {
+  const withBreaks = text.replace(/\s*(COMMIT\s*\d+:)/gi, '\n$1').trim();
+  return withBreaks
+    .split('\n')
+    .map(line => line.replace(/^COMMIT\s*\d+:\s*/i, '').trim())
+    .filter(line => line.length > 0);
+}
+
 type Repo = {
   name: string;
   description: string;
@@ -159,7 +172,16 @@ function App() {
     finally { setLoading(false); }
   }
 
-  const sections = result?.explanation
+  // Sections come back from the model separated by blank lines:
+  //   0: What it is
+  //   1: Why it matters
+  //   2: Status (includes "why it stopped" inline when the repo is abandoned)
+  //   3: Recent commits — a single block containing 3 "COMMIT N:" marked lines
+  //
+  // Because the commits section is one block (not 3 separate blank-line
+  // sections), we only ever expect 4 top-level sections now. Index 3 is
+  // split further, below, into individual commit lines for display.
+  const rawSections = result?.explanation
     ? result.explanation
         .split('\n')
         .reduce((acc: string[][], line: string) => {
@@ -175,6 +197,14 @@ function App() {
         .map((s: string[]) => stripSectionLabel(s.join(' ')))
         .filter((s: string) => s.length > 0)
     : [];
+
+  // Defensive: if the model still splits commits across multiple blank-line
+  // sections despite instructions, merge every section from index 3 onward
+  // into one block before splitting on COMMIT markers, so commits never
+  // bleed into a mislabeled trailing section.
+  const sections = rawSections.length > 3
+    ? [...rawSections.slice(0, 3), rawSections.slice(3).join(' ')]
+    : rawSections;
 
   const currentMode = MODES.find(m => m.id === mode)!;
 
@@ -332,14 +362,24 @@ function App() {
               )}
             </div>
             <div className={styles.resultBody}>
-              {sections.map((section: string, i: number) => (
-                <div key={i} className={dark ? styles.sectionDark : styles.sectionLight}>
-                  <div className={dark ? styles.sectionLabelDark : styles.sectionLabelLight}>
-                    {i === 0 ? 'What it is' : i === 1 ? 'Why it matters' : i === 2 ? 'Status' : i === 3 ? 'Recent commits' : 'Why it stopped'}
+              {sections.map((section: string, i: number) => {
+                const isCommitsSection = i === 3;
+                const label = i === 0 ? 'What it is' : i === 1 ? 'Why it matters' : i === 2 ? 'Status' : 'Recent commits';
+                return (
+                  <div key={i} className={dark ? styles.sectionDark : styles.sectionLight}>
+                    <div className={dark ? styles.sectionLabelDark : styles.sectionLabelLight}>{label}</div>
+                    {isCommitsSection ? (
+                      splitCommitLines(section).map((line, j) => (
+                        <div key={j} className={dark ? styles.sectionTextDark : styles.sectionTextLight} style={{ marginBottom: 8 }}>
+                          {line}
+                        </div>
+                      ))
+                    ) : (
+                      <div className={dark ? styles.sectionTextDark : styles.sectionTextLight}>{section}</div>
+                    )}
                   </div>
-                  <div className={dark ? styles.sectionTextDark : styles.sectionTextLight}>{section}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
