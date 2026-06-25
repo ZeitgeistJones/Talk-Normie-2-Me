@@ -20,6 +20,8 @@ const LANG_COLORS: Record<string, string> = {
   HTML: '#ef4444',
 };
 
+const FREE_LIMIT = 2;
+
 export default function Home() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,7 +33,14 @@ export default function Home() {
   const [activeRepo, setActiveRepo] = useState('');
   const [search, setSearch] = useState('');
   const [dark, setDark] = useState(false);
+  const [useCount, setUseCount] = useState(0);
+  const [showWall, setShowWall] = useState(false);
   const cache: Record<string, any> = {};
+
+  useEffect(() => {
+    const stored = parseInt(localStorage.getItem('tn2m_uses') || '0');
+    setUseCount(stored);
+  }, []);
 
   useEffect(() => {
     if (browseOpen && repos.length === 0) {
@@ -60,8 +69,19 @@ export default function Home() {
   async function handleSubmit(repoUrl?: string) {
     const target = repoUrl || url;
     if (!target.trim()) return;
+
+    if (useCount >= FREE_LIMIT) {
+      setShowWall(true);
+      return;
+    }
+
     if (cache[target]) { setResult(cache[target]); return; }
     setLoading(true); setError(''); setResult(null);
+
+    const newCount = useCount + 1;
+    setUseCount(newCount);
+    localStorage.setItem('tn2m_uses', String(newCount));
+
     try {
       const res = await fetch('/api/explain', {
         method: 'POST',
@@ -89,8 +109,6 @@ export default function Home() {
       .filter((s: string[]) => s.length > 0)
       .map((s: string[]) => s.join(' '))
     : [];
-
-  const c = dark ? 'd' : 'l';
 
   return (
     <main className={dark ? styles.mainDark : styles.mainLight}>
@@ -130,6 +148,12 @@ export default function Home() {
           {dark ? 'Still plain English, just darker.' : 'Paste any GitHub link. Get a plain English breakdown.'}
         </p>
 
+        {browseOpen && (
+          <p className={dark ? styles.clawdHintDark : styles.clawdHintLight}>
+            CLAWD repos include context on why each build matters for token holders — not just what it does.
+          </p>
+        )}
+
         <div className={styles.searchRow}>
           <input
             className={dark ? styles.inputDark : styles.inputLight}
@@ -144,7 +168,18 @@ export default function Home() {
           </button>
         </div>
 
-        {browseOpen && (
+        {showWall && (
+          <div className={dark ? styles.wallDark : styles.wallLight}>
+            <p className={dark ? styles.wallTextDark : styles.wallTextLight}>
+              Two explains. That's the free tier. Grab 10M CLAWD, connect your wallet, and get back to talking normie.
+            </p>
+            <button className={dark ? styles.wallBtnDark : styles.wallBtnLight} disabled>
+              Connect wallet — coming soon
+            </button>
+          </div>
+        )}
+
+        {browseOpen && !showWall && (
           <div className={dark ? styles.browsePanelDark : styles.browsePanelLight}>
             <div className={dark ? styles.browseHeaderDark : styles.browseHeaderLight}>
               <span className={dark ? styles.browseTitleDark : styles.browseTitleLight}>
@@ -182,7 +217,7 @@ export default function Home() {
         {error && <div className={dark ? styles.errorDark : styles.errorLight}>{error}</div>}
         {loading && <div className={dark ? styles.thinkingDark : styles.thinkingLight}>Thinking...</div>}
 
-        {result && (
+        {result && !showWall && (
           <div className={dark ? styles.resultDark : styles.resultLight}>
             <div className={dark ? styles.resultTopDark : styles.resultTopLight}>
               <span className={dark ? styles.resultNameDark : styles.resultNameLight}>{result.meta?.name}</span>
@@ -204,6 +239,12 @@ export default function Home() {
               ))}
             </div>
           </div>
+        )}
+
+        {!showWall && (
+          <p className={dark ? styles.counterDark : styles.counterLight}>
+            {FREE_LIMIT - useCount > 0 ? `${FREE_LIMIT - useCount} free explain${FREE_LIMIT - useCount === 1 ? '' : 's'} remaining` : ''}
+          </p>
         )}
 
       </div>
