@@ -76,8 +76,8 @@ Language: ${repoData.language}
 README:
 ${readmeText}
 
-Last 3 commits:
-${commits.map((c: any, i: number) => `${i + 1}. "${c.message}" — ${c.date}`).join('\n')}`;
+Last 3 commits — write each one as its own separate paragraph starting with the date in brackets like [Jun 24, 2026]:
+${commits.map((c: any, i: number) => `${i + 1}. "${c.message}" — ${c.date}`).join('\n')}
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
