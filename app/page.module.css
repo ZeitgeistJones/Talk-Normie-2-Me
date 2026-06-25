@@ -20,6 +20,41 @@
 .logoTextLight { font-size: 16px; font-weight: 500; color: #1a1a1a; letter-spacing: -0.2px; }
 .logoTextDark { font-size: 16px; font-weight: 500; color: #fff; letter-spacing: -0.2px; }
 
+/* The clickable mode word inside the logo */
+.modeWordLight {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: -0.2px;
+  color: #1a1a1a;
+  cursor: pointer;
+  border-bottom: 1px dotted #bbb;
+  line-height: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+.modeWordLight:hover { color: #555; border-bottom-color: #888; }
+
+.modeWordDark {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: -0.2px;
+  color: #fff;
+  cursor: pointer;
+  border-bottom: 1px dotted #555;
+  line-height: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+.modeWordDark:hover { color: #aaa; border-bottom-color: #888; }
+
 .darkToggleLight { background: none; border: 0.5px solid #e0e0e0; border-radius: 8px; cursor: pointer; font-size: 15px; padding: 4px 8px; }
 .darkToggleLight:hover { background: #f0f0f0; }
 .darkToggleDark { background: none; border: 0.5px solid #333; border-radius: 8px; cursor: pointer; font-size: 15px; padding: 4px 8px; }
@@ -30,31 +65,8 @@
 .browseToggleDark { font-size: 12px; color: #aaa; background: #111; border: 0.5px solid #333; border-radius: 20px; padding: 6px 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
 .browseToggleDark:hover { background: #1a1a1a; }
 
-/* Tagline row — tagline left, mode picker right */
-.taglineRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; gap: 12px; }
-.taglineLight { font-size: 13px; color: #888; }
-.taglineDark { font-size: 13px; color: #555; }
-
-/* Mode picker — subtle inline trigger */
-.modePickerWrap { position: relative; flex-shrink: 0; }
-.modePickerLight { background: none; border: none; font-size: 12px; color: #bbb; cursor: pointer; padding: 0; font-family: inherit; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-.modePickerLight:hover { color: #888; }
-.modePickerDark { background: none; border: none; font-size: 12px; color: #444; cursor: pointer; padding: 0; font-family: inherit; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-.modePickerDark:hover { color: #666; }
-.modePickerName { color: #888; font-weight: 500; }
-.modePickerCaret { font-size: 9px; margin-left: 2px; }
-
-/* Dropdown */
-.modeDropdownLight { position: absolute; right: 0; top: calc(100% + 6px); background: #fff; border: 0.5px solid #e0e0e0; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); z-index: 100; min-width: 150px; overflow: hidden; padding: 4px; }
-.modeDropdownDark { position: absolute; right: 0; top: calc(100% + 6px); background: #161616; border: 0.5px solid #2a2a2a; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); z-index: 100; min-width: 150px; overflow: hidden; padding: 4px; }
-
-.modeOptionLight { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border: none; background: none; font-size: 13px; color: #555; cursor: pointer; font-family: inherit; border-radius: 6px; text-align: left; }
-.modeOptionLight:hover { background: #f5f5f5; color: #1a1a1a; }
-.modeOptionActiveLight { color: #1a1a1a; font-weight: 500; }
-.modeOptionDark { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border: none; background: none; font-size: 13px; color: #888; cursor: pointer; font-family: inherit; border-radius: 6px; text-align: left; }
-.modeOptionDark:hover { background: #222; color: #e0e0e0; }
-.modeOptionActiveDark { color: #e0e0e0; font-weight: 500; }
-.modeOptionCheck { margin-left: auto; font-size: 11px; color: #aaa; }
+.taglineLight { font-size: 13px; color: #888; margin-bottom: 1.25rem; }
+.taglineDark { font-size: 13px; color: #555; margin-bottom: 1.25rem; }
 
 /* Mode badge on result card */
 .modeBadgeLight { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #1a1a1a; color: #fff; }
@@ -131,7 +143,6 @@
 .wallTextDark { font-size: 14px; color: #888; line-height: 1.6; margin-bottom: 16px; }
 .wallBtnLight { height: 40px; padding: 0 20px; border-radius: 8px; border: 0.5px solid #ddd; background: #f5f5f5; color: #aaa; font-size: 14px; cursor: not-allowed; font-family: inherit; }
 .wallBtnDark { height: 40px; padding: 0 20px; border-radius: 8px; border: 0.5px solid #333; background: #1a1a1a; color: #444; font-size: 14px; cursor: not-allowed; font-family: inherit; }
-
 .counterLight { font-size: 11px; color: #ddd; text-align: center; margin-top: 1rem; }
 .counterDark { font-size: 11px; color: #333; text-align: center; margin-top: 1rem; }
 .wallHeadingLight { font-size: 15px; font-weight: 500; color: #1a1a1a; margin-bottom: 8px; }
