@@ -95,3 +95,15 @@
 .sectionLabelDark { font-size: 10px; font-weight: 500; color: #444; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
 .sectionTextLight { font-size: 13px; color: #555; line-height: 1.65; white-space: pre-wrap; }
 .sectionTextDark { font-size: 13px; color: #999; line-height: 1.65; white-space: pre-wrap; }
+.clawdHintLight { font-size: 12px; color: #aaa; margin-bottom: 10px; margin-top: -8px; }
+.clawdHintDark { font-size: 12px; color: #444; margin-bottom: 10px; margin-top: -8px; }
+
+.wallLight { border: 0.5px solid #e8e8e8; border-radius: 12px; background: #fff; padding: 24px; margin-bottom: 1.5rem; text-align: center; }
+.wallDark { border: 0.5px solid #222; border-radius: 12px; background: #111; padding: 24px; margin-bottom: 1.5rem; text-align: center; }
+.wallTextLight { font-size: 14px; color: #555; line-height: 1.6; margin-bottom: 16px; }
+.wallTextDark { font-size: 14px; color: #888; line-height: 1.6; margin-bottom: 16px; }
+.wallBtnLight { height: 40px; padding: 0 20px; border-radius: 8px; border: 0.5px solid #ddd; background: #f5f5f5; color: #aaa; font-size: 14px; cursor: not-allowed; font-family: inherit; }
+.wallBtnDark { height: 40px; padding: 0 20px; border-radius: 8px; border: 0.5px solid #333; background: #1a1a1a; color: #444; font-size: 14px; cursor: not-allowed; font-family: inherit; }
+
+.counterLight { font-size: 11px; color: #ddd; text-align: center; margin-top: 1rem; }
+.counterDark { font-size: 11px; color: #333; text-align: center; margin-top: 1rem; }
