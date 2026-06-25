@@ -33,10 +33,14 @@ export default function Home() {
     }
   }, [tab]);
 
-  const isJob = (name: string) => name.startsWith('leftclaw-service-job');
+  const isJob = (name: string, description?: string) => 
+    name.startsWith('leftclaw-service-job') ||
+    name.startsWith('cv-') ||
+    name.startsWith('job-') ||
+    (description || '').toLowerCase().includes('job ');
 
   const filteredRepos = repos
-    .filter(r => !isJob(r.name))
+    .filter(r => !isJob(r.name, r.description))
     .filter(r =>
       !search ||
       r.name.toLowerCase().includes(search.toLowerCase()) ||
