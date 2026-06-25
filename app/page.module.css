@@ -1,20 +1,33 @@
 .main { min-height: 100vh; background: #0a0a0a; display: flex; align-items: flex-start; justify-content: center; padding: 60px 20px; }
 .container { width: 100%; max-width: 700px; }
 .title { color: #ffffff; font-size: 2rem; font-weight: 700; margin: 0 0 8px; }
-.subtitle { color: #888; font-size: 1rem; margin: 0 0 32px; }
+.subtitle { color: #888; font-size: 1rem; margin: 0 0 24px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+.tab { background: #1a1a1a; border: 1px solid #333; color: #888; padding: 10px 18px; font-size: 0.9rem; border-radius: 8px; cursor: pointer; }
+.tab:hover { color: #fff; border-color: #555; }
+.tabActive { background: #6b9bff22; border-color: #6b9bff; color: #6b9bff; }
 .inputRow { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
 .input { flex: 1; min-width: 200px; background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 12px 16px; font-size: 0.95rem; border-radius: 8px; outline: none; }
 .input:focus { border-color: #6b9bff; }
 .button { background: #6b9bff; color: #000; border: none; padding: 12px 20px; font-size: 0.95rem; font-weight: 600; border-radius: 8px; cursor: pointer; white-space: nowrap; }
 .button:disabled { opacity: 0.5; cursor: default; }
 .button:hover:not(:disabled) { background: #89b0ff; }
+.repoList { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; max-height: 400px; overflow-y: auto; }
+.repoItem { background: #111; border: 1px solid #222; border-radius: 8px; padding: 12px 16px; cursor: pointer; }
+.repoItem:hover { border-color: #444; }
+.repoItemActive { border-color: #6b9bff; background: #6b9bff11; }
+.repoItemRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.repoItemName { color: #fff; font-weight: 600; font-size: 0.95rem; }
+.repoItemDesc { color: #666; font-size: 0.85rem; margin-top: 4px; }
+.dimText { color: #555; font-size: 0.9rem; margin-bottom: 16px; }
 .error { color: #ff6b6b; background: #1a0a0a; border: 1px solid #ff6b6b33; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; }
-.card { background: #111; border: 1px solid #222; border-radius: 12px; padding: 24px; }
+.card { background: #111; border: 1px solid #222; border-radius: 12px; padding: 24px; margin-top: 20px; }
 .cardHeader { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
 .repoName { color: #6b9bff; font-weight: 700; font-size: 1.1rem; }
 .lang { background: #1e1e1e; color: #888; padding: 2px 10px; border-radius: 20px; font-size: 0.8rem; }
 .updated { color: #555; font-size: 0.8rem; margin-left: auto; }
-.section { padding: 20px 0; border-bottom: 1px solid #1e1e1e; }
+.sections { display: flex; flex-direction: column; }
+.section { padding: 16px 0; border-bottom: 1px solid #1e1e1e; }
 .section:first-child { padding-top: 0; }
 .section:last-child { border-bottom: none; padding-bottom: 0; }
 .section p { color: #ccc; line-height: 1.75; font-size: 0.95rem; margin: 0; }
