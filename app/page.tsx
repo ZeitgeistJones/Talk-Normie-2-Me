@@ -1,6 +1,22 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useAccount, useReadContract } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { Providers } from './providers';
 import styles from './page.module.css';
+
+const CLAWD_GATE = '0xc22B7b983EC81523c969753c2385106835E8CfCE' as const;
+const CLAWD_GATE_ABI = [
+  {
+    name: 'hasAccess',
+    type: 'function',
+    inputs: [{ name: 'wallet', type: 'address' }, { name: 'tier', type: 'uint8' }],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  }
+] as const;
+
+const FREE_LIMIT = 2;
 
 type Repo = {
   name: string;
@@ -20,9 +36,7 @@ const LANG_COLORS: Record<string, string> = {
   HTML: '#ef4444',
 };
 
-const FREE_LIMIT = 2;
-
-export default function Home() {
+function App() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -37,10 +51,27 @@ export default function Home() {
   const [showWall, setShowWall] = useState(false);
   const cache: Record<string, any> = {};
 
+  const { address, isConnected } = useAccount();
+
+  const { data: hasAccess } = useReadContract({
+    address: CLAWD_GATE,
+    abi: CLAWD_GATE_ABI,
+    functionName: 'hasAccess',
+    args: address ? [address, 1] : undefined,
+    chainId: 8453,
+    query: { enabled: !!address },
+  });
+
+  const isUnlocked = isConnected && Boolean(hasAccess);
+
   useEffect(() => {
     const stored = parseInt(localStorage.getItem('tn2m_uses') || '0');
     setUseCount(stored);
   }, []);
+
+  useEffect(() => {
+    if (isUnlocked && showWall) setShowWall(false);
+  }, [isUnlocked, showWall]);
 
   useEffect(() => {
     if (browseOpen && repos.length === 0) {
@@ -70,7 +101,7 @@ export default function Home() {
     const target = repoUrl || url;
     if (!target.trim()) return;
 
-    if (useCount >= FREE_LIMIT) {
+    if (!isUnlocked && useCount >= FREE_LIMIT) {
       setShowWall(true);
       return;
     }
@@ -78,9 +109,11 @@ export default function Home() {
     if (cache[target]) { setResult(cache[target]); return; }
     setLoading(true); setError(''); setResult(null);
 
-    const newCount = useCount + 1;
-    setUseCount(newCount);
-    localStorage.setItem('tn2m_uses', String(newCount));
+    if (!isUnlocked) {
+      const newCount = useCount + 1;
+      setUseCount(newCount);
+      localStorage.setItem('tn2m_uses', String(newCount));
+    }
 
     try {
       const res = await fetch('/api/explain', {
@@ -170,12 +203,15 @@ export default function Home() {
 
         {showWall && (
           <div className={dark ? styles.wallDark : styles.wallLight}>
+            <p className={dark ? styles.wallHeadingDark : styles.wallHeadingLight}>
+              This is where we find out who the real normies are.
+            </p>
             <p className={dark ? styles.wallTextDark : styles.wallTextLight}>
               Two explains. That's the free tier. Grab 10M CLAWD, connect your wallet, and get back to talking normie.
             </p>
-            <button className={dark ? styles.wallBtnDark : styles.wallBtnLight} disabled>
-              Connect wallet — coming soon
-            </button>
+            <div className={styles.wallConnect}>
+              <ConnectButton />
+            </div>
           </div>
         )}
 
@@ -241,7 +277,7 @@ export default function Home() {
           </div>
         )}
 
-        {!showWall && (
+        {!showWall && !isUnlocked && (
           <p className={dark ? styles.counterDark : styles.counterLight}>
             {FREE_LIMIT - useCount > 0 ? `${FREE_LIMIT - useCount} free explain${FREE_LIMIT - useCount === 1 ? '' : 's'} remaining` : ''}
           </p>
@@ -249,5 +285,14 @@ export default function Home() {
 
       </div>
     </main>
+  );
+}
+
+export default function Home() {
+  const [dark, setDark] = useState(false);
+  return (
+    <Providers dark={dark}>
+      <App />
+    </Providers>
   );
 }
