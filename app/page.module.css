@@ -92,9 +92,9 @@
 .sectionDark { padding: 14px 0; border-bottom: 0.5px solid #1a1a1a; }
 .sectionDark:last-child { border-bottom: none; }
 .sectionLabelLight { font-size: 10px; font-weight: 500; color: #bbb; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
-.sectionLabelDark { font-size: 10px; font-weight: 500; color: #444; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
+.sectionLabelDark { font-size: 10px; font-weight: 500; color: #666; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
 .sectionTextLight { font-size: 13px; color: #555; line-height: 1.65; white-space: pre-wrap; }
-.sectionTextDark { font-size: 13px; color: #999; line-height: 1.65; white-space: pre-wrap; }
+.sectionTextDark { font-size: 14px; color: #ddd; line-height: 1.7; white-space: pre-wrap; }
 .clawdHintLight { font-size: 12px; color: #aaa; margin-bottom: 10px; margin-top: -8px; }
 .clawdHintDark { font-size: 12px; color: #444; margin-bottom: 10px; margin-top: -8px; }
 
