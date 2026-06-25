@@ -56,17 +56,17 @@ export async function POST(req: NextRequest) {
 Here is background context about CLAWD and the ecosystem this repo belongs to:
 ${chronicle}
 
-Cover these four things, each as its own short paragraph with a blank line between them:
+Write four sections, each separated by a blank line:
 
-1. What this repo actually is and who it's for.
+Section 1: What this repo actually is and who it's for.
 
-2. Why it matters to someone holding the CLAWD token specifically. Use the chronicle context above to make this accurate and specific.
+Section 2: Why it matters to someone holding the CLAWD token specifically. Use the chronicle context above to make this accurate and specific.
 
-3. Whether it looks alive or abandoned based on the commit dates.
+Section 3: Whether it looks alive or abandoned based on the commit dates.
 
-4. What the last 3 commits mean in plain English — what actually changed and why it matters. Put the date next to each one.
+Section 4: The last 3 commits in plain English. Write each commit as its own paragraph separated by a blank line. Start each one with the date in brackets like [Jun 24, 2026] then explain what changed and why it matters in one or two sentences.
 
-Keep the whole thing under 250 words. Put a blank line between each section.
+Keep the whole thing under 300 words.
 
 Repo name: ${repoData.name}
 Description: ${repoData.description || 'No description'}
@@ -76,8 +76,8 @@ Language: ${repoData.language}
 README:
 ${readmeText}
 
-Last 3 commits — write each one as its own separate paragraph starting with the date in brackets like [Jun 24, 2026]:
-${commits.map((c: any, i: number) => `${i + 1}. "${c.message}" — ${c.date}`).join('\n')}
+Last 3 commits:
+${commits.map((c: any, i: number) => `${i + 1}. "${c.message}" — ${c.date}`).join('\n')}`;
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
