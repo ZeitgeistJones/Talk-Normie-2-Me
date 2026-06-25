@@ -1,23 +1,47 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styles from './page.module.css';
 
+type Repo = {
+  name: string;
+  description: string;
+  url: string;
+  language: string;
+  pushedAt: string;
+  stars: number;
+};
+
 export default function Home() {
+  const [tab, setTab] = useState<'paste' | 'browse'>('paste');
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
+  const [repos, setRepos] = useState<Repo[]>([]);
+  const [reposLoading, setReposLoading] = useState(false);
+  const [activeRepo, setActiveRepo] = useState('');
   const cache: Record<string, any> = {};
 
-  async function handleSubmit() {
-    if (!url.trim()) return;
-    if (cache[url]) { setResult(cache[url]); return; }
+  useEffect(() => {
+    if (tab === 'browse' && repos.length === 0) {
+      setReposLoading(true);
+      fetch('/api/repos')
+        .then(r => r.json())
+        .then(data => { setRepos(data); setReposLoading(false); })
+        .catch(() => setReposLoading(false));
+    }
+  }, [tab]);
+
+  async function handleSubmit(repoUrl?: string) {
+    const target = repoUrl || url;
+    if (!target.trim()) return;
+    if (cache[target]) { setResult(cache[target]); return; }
     setLoading(true); setError(''); setResult(null);
     try {
-      const res = await fetch('/api/explain', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+      const res = await fetch('/api/explain', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: target }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      cache[url] = data;
+      cache[target] = data;
       setResult(data);
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
@@ -41,12 +65,39 @@ export default function Home() {
     <main className={styles.main}>
       <div className={styles.container}>
         <h1 className={styles.title}>🗣️ Talk Normie 2 Me</h1>
-        <p className={styles.subtitle}>Paste any GitHub link. Get a plain English breakdown.</p>
-        <div className={styles.inputRow}>
-          <input className={styles.input} type="text" placeholder="https://github.com/someone/something" value={url} onChange={e => setUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} />
-          <button className={styles.button} onClick={handleSubmit} disabled={loading}>{loading ? 'Thinking...' : 'Talk Normie 2 Me'}</button>
+        <p className={styles.subtitle}>GitHub repos explained in plain English.</p>
+
+        <div className={styles.tabs}>
+          <button className={`${styles.tab} ${tab === 'paste' ? styles.tabActive : ''}`} onClick={() => { setTab('paste'); setResult(null); setError(''); }}>Paste a Link</button>
+          <button className={`${styles.tab} ${tab === 'browse' ? styles.tabActive : ''}`} onClick={() => { setTab('browse'); setResult(null); setError(''); }}>Browse CLAWD Repos</button>
         </div>
+
+        {tab === 'paste' && (
+          <div className={styles.inputRow}>
+            <input className={styles.input} type="text" placeholder="https://github.com/someone/something" value={url} onChange={e => setUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} />
+            <button className={styles.button} onClick={() => handleSubmit()} disabled={loading}>{loading ? 'Thinking...' : 'Talk Normie 2 Me'}</button>
+          </div>
+        )}
+
+        {tab === 'browse' && (
+          <div className={styles.repoList}>
+            {reposLoading && <div className={styles.dimText}>Loading repos...</div>}
+            {repos.map(repo => (
+              <div key={repo.name} className={`${styles.repoItem} ${activeRepo === repo.url ? styles.repoItemActive : ''}`} onClick={() => { setActiveRepo(repo.url); setResult(null); handleSubmit(repo.url); }}>
+                <div className={styles.repoItemRow}>
+                  <span className={styles.repoItemName}>{repo.name}</span>
+                  {repo.language && <span className={styles.lang}>{repo.language}</span>}
+                  <span className={styles.updated}>{new Date(repo.pushedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                </div>
+                {repo.description && <div className={styles.repoItemDesc}>{repo.description}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+
         {error && <div className={styles.error}>{error}</div>}
+        {loading && <div className={styles.dimText}>Thinking...</div>}
+
         {result && (
           <div className={styles.card}>
             <div className={styles.cardHeader}>
