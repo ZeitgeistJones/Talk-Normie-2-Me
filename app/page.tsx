@@ -20,6 +20,7 @@ export default function Home() {
   const [repos, setRepos] = useState<Repo[]>([]);
   const [reposLoading, setReposLoading] = useState(false);
   const [activeRepo, setActiveRepo] = useState('');
+  const [search, setSearch] = useState('');
   const cache: Record<string, any> = {};
 
   useEffect(() => {
@@ -31,6 +32,16 @@ export default function Home() {
         .catch(() => setReposLoading(false));
     }
   }, [tab]);
+
+  const isJob = (name: string) => name.startsWith('leftclaw-service-job');
+
+  const filteredRepos = repos
+    .filter(r => !isJob(r.name))
+    .filter(r =>
+      !search ||
+      r.name.toLowerCase().includes(search.toLowerCase()) ||
+      (r.description || '').toLowerCase().includes(search.toLowerCase())
+    );
 
   async function handleSubmit(repoUrl?: string) {
     const target = repoUrl || url;
@@ -61,6 +72,20 @@ export default function Home() {
       .map((s: string[]) => s.join(' '))
     : [];
 
+  const RepoItem = ({ repo }: { repo: Repo }) => (
+    <div
+      className={`${styles.repoItem} ${activeRepo === repo.url ? styles.repoItemActive : ''}`}
+      onClick={() => { setActiveRepo(repo.url); setResult(null); setError(''); handleSubmit(repo.url); }}
+    >
+      <div className={styles.repoItemRow}>
+        <span className={styles.repoItemName}>{repo.name}</span>
+        {repo.language && <span className={styles.lang}>{repo.language}</span>}
+        <span className={styles.updated}>{new Date(repo.pushedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+      </div>
+      {repo.description && <div className={styles.repoItemDesc}>{repo.description}</div>}
+    </div>
+  );
+
   return (
     <main className={styles.main}>
       <div className={styles.container}>
@@ -68,7 +93,7 @@ export default function Home() {
         <p className={styles.subtitle}>GitHub repos explained in plain English.</p>
 
         <div className={styles.tabs}>
-          <button className={`${styles.tab} ${tab === 'paste' ? styles.tabActive : ''}`} onClick={() => { setTab('paste'); setResult(null); setError(''); }}>Paste a Link</button>
+          <button className={`${styles.tab} ${tab === 'paste' ? styles.tabActive : ''}`} onClick={() => { setTab('paste'); setResult(null); setError(''); setSearch(''); }}>Paste a Link</button>
           <button className={`${styles.tab} ${tab === 'browse' ? styles.tabActive : ''}`} onClick={() => { setTab('browse'); setResult(null); setError(''); }}>Browse CLAWD Repos</button>
         </div>
 
@@ -80,19 +105,21 @@ export default function Home() {
         )}
 
         {tab === 'browse' && (
-          <div className={styles.repoList}>
-            {reposLoading && <div className={styles.dimText}>Loading repos...</div>}
-            {repos.map(repo => (
-              <div key={repo.name} className={`${styles.repoItem} ${activeRepo === repo.url ? styles.repoItemActive : ''}`} onClick={() => { setActiveRepo(repo.url); setResult(null); handleSubmit(repo.url); }}>
-                <div className={styles.repoItemRow}>
-                  <span className={styles.repoItemName}>{repo.name}</span>
-                  {repo.language && <span className={styles.lang}>{repo.language}</span>}
-                  <span className={styles.updated}>{new Date(repo.pushedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                </div>
-                {repo.description && <div className={styles.repoItemDesc}>{repo.description}</div>}
-              </div>
-            ))}
-          </div>
+          <>
+            <input
+              className={styles.input}
+              style={{ marginBottom: '12px', width: '100%' }}
+              type="text"
+              placeholder="Search CLAWD repos..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <div className={styles.repoList}>
+              {reposLoading && <div className={styles.dimText}>Loading repos...</div>}
+              {filteredRepos.map(repo => <RepoItem key={repo.name} repo={repo} />)}
+              {!reposLoading && filteredRepos.length === 0 && <div className={styles.dimText}>No repos found.</div>}
+            </div>
+          </>
         )}
 
         {error && <div className={styles.error}>{error}</div>}
