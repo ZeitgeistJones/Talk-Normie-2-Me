@@ -25,6 +25,22 @@ function daysSince(dateStr: string): number {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
+// Precise, timezone-aware timestamp for the model to optionally surface,
+// e.g. "Jun 24, 2026, 3:47 PM UTC". Falls back gracefully if the date is invalid.
+function preciseTimestamp(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC',
+    timeZoneName: 'short',
+  });
+}
+
 type PersonalityMode = 'normie' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku';
 
 function getPersonalityPrompt(mode: PersonalityMode): string {
@@ -92,6 +108,7 @@ export async function POST(req: NextRequest) {
     const commits = commitsData.slice(0, 3).map((c: any) => ({
       message: c.commit.message,
       date: new Date(c.commit.author.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      preciseDate: preciseTimestamp(c.commit.author.date),
       rawDate: c.commit.author.date,
     }));
 
@@ -106,11 +123,20 @@ export async function POST(req: NextRequest) {
       ? `Section 2: Why this matters to someone holding the CLAWD token specifically. Use the chronicle context above to make this accurate and specific.`
       : `Section 2: Who would actually find this useful and why — what kind of person or project would want to use this.`;
 
-    const abandonedSection = isAbandoned
-      ? `\nSection 5: This repo hasn't been updated in ${lastCommitDays} days. In plain English, give your best read on why it might have stopped — was it finished, replaced by something else, abandoned mid-build, or something else? Base this on the README, commit messages, and description.`
+    // Folded into Status (Section 3) as an optional addendum, rather than a
+    // separate trailing section, so it never collides with the commit list below.
+    const abandonedAddendum = isAbandoned
+      ? ` It hasn't been updated in ${lastCommitDays} days — give your best read on why it might have stopped (finished, replaced by something else, abandoned mid-build, or something else), based on the README, commit messages, and description.`
       : '';
 
     const personalityPrompt = getPersonalityPrompt(mode as PersonalityMode);
+
+    // Each commit gets an explicit marker (COMMIT 1:, COMMIT 2:, ...) on its own
+    // line so the frontend can split deterministically, even if the model puts
+    // all three in one paragraph block instead of separating them with blank lines.
+    const commitInstructions = commits
+      .map((c: any, i: number) => `COMMIT ${i + 1}: "${c.message}" — ${c.date} (precise: ${c.preciseDate})`)
+      .join('\n');
 
     const prompt = `${personalityPrompt}
 
@@ -120,10 +146,9 @@ Section 1: What this repo actually is and who it's for.
 
 ${section2}
 
-Section 3: Whether it looks alive or abandoned based on the commit dates.
+Section 3: Whether it looks alive or abandoned based on the commit dates.${abandonedAddendum}
 
-Section 4: The last 3 commits in plain English. Write each commit as its own paragraph separated by a blank line. Start each one with the date in brackets like [Jun 24, 2026] then explain what changed and why it matters in one or two sentences.
-${abandonedSection}
+Section 4: The last 3 commits in plain English. This section MUST contain exactly 3 lines, one per commit, each on its own line (use a real line break between them, do not run them together). Each line MUST start with the literal marker "COMMIT N:" (N = 1, 2, or 3), then the date in brackets like [Jun 24, 2026], then a one or two sentence explanation of what changed and why it matters. If a precise timestamp is available, you may mention the time of day naturally in the explanation (e.g. "shipped late Tuesday night"). Do not add a blank line between the 3 commit lines — they must stay together as one section.
 
 Keep the whole thing under 350 words. Stay in character for the entire response.
 
@@ -136,8 +161,8 @@ Owner: ${owner}
 README:
 ${readmeText}
 
-Last 3 commits:
-${commits.map((c: any, i: number) => `${i + 1}. "${c.message}" — ${c.date}`).join('\n')}`;
+Last 3 commits (use these exact dates/timestamps, do not invent your own):
+${commitInstructions}`;
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
