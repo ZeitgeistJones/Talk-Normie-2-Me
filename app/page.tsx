@@ -268,7 +268,7 @@ function App() {
               {sections.map((section: string, i: number) => (
                 <div key={i} className={dark ? styles.sectionDark : styles.sectionLight}>
                   <div className={dark ? styles.sectionLabelDark : styles.sectionLabelLight}>
-                   {i === 0 ? 'What it is' : i === 1 ? 'Why it matters' : i === 2 ? 'Status' : 'Recent commits'}
+                   {i === 0 ? 'What it is' : i === 1 ? 'Why it matters' : i === 2 ? 'Status' : i === 3 ? 'Recent commits' : 'Why it stopped'}
                   </div>
                   <div className={dark ? styles.sectionTextDark : styles.sectionTextLight}>{section}</div>
                 </div>
