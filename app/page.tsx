@@ -30,6 +30,7 @@ export default function Home() {
   const [browseOpen, setBrowseOpen] = useState(false);
   const [activeRepo, setActiveRepo] = useState('');
   const [search, setSearch] = useState('');
+  const [dark, setDark] = useState(false);
   const cache: Record<string, any> = {};
 
   useEffect(() => {
@@ -89,55 +90,68 @@ export default function Home() {
       .map((s: string[]) => s.join(' '))
     : [];
 
+  const c = dark ? 'd' : 'l';
+
   return (
-    <main className={styles.main}>
+    <main className={dark ? styles.mainDark : styles.mainLight}>
       <div className={styles.container}>
 
         <div className={styles.header}>
           <div className={styles.logo}>
-            <div className={styles.logoIcon}>
-              <div className={styles.bubbleBig}>
-                <span className={styles.dot} />
-                <span className={styles.dot} />
-                <span className={styles.dot} />
+            <div className={dark ? styles.logoIconDark : styles.logoIconLight}>
+              <div className={dark ? styles.bubbleBigDark : styles.bubbleBigLight}>
+                <span className={dark ? styles.dotDark : styles.dotLight} />
+                <span className={dark ? styles.dotDark : styles.dotLight} />
+                <span className={dark ? styles.dotDark : styles.dotLight} />
               </div>
-              <div className={styles.bubbleSmall} />
+              <div className={dark ? styles.bubbleSmallDark : styles.bubbleSmallLight} />
             </div>
-            <span className={styles.logoText}>Talk Normie 2 Me</span>
+            <span className={dark ? styles.logoTextDark : styles.logoTextLight}>Talk Normie 2 Me</span>
           </div>
-          <button
-            className={`${styles.browseToggle} ${browseOpen ? styles.browseToggleActive : ''}`}
-            onClick={() => setBrowseOpen(o => !o)}
-          >
-            <span>Browse CLAWD repos</span>
-            <span className={styles.toggleArrow}>{browseOpen ? '↑' : '↓'}</span>
-          </button>
+          <div className={styles.headerRight}>
+            <button
+              className={dark ? styles.darkToggleDark : styles.darkToggleLight}
+              onClick={() => setDark(d => !d)}
+              title={dark ? 'Back to normie mode' : 'Warning: less normie ahead'}
+            >
+              {dark ? '☀️' : '🌙'}
+            </button>
+            <button
+              className={dark ? styles.browseToggleDark : styles.browseToggleLight}
+              onClick={() => setBrowseOpen(o => !o)}
+            >
+              <span>{browseOpen ? 'Close' : 'Browse CLAWD repos'}</span>
+              <span>{browseOpen ? '↑' : '↓'}</span>
+            </button>
+          </div>
         </div>
 
-        <p className={styles.tagline}>Paste any GitHub link. Get a plain English breakdown.</p>
+        <p className={dark ? styles.taglineDark : styles.taglineLight}>
+          {dark ? 'Still plain English, just darker.' : 'Paste any GitHub link. Get a plain English breakdown.'}
+        </p>
 
         <div className={styles.searchRow}>
           <input
-            className={styles.input}
+            className={dark ? styles.inputDark : styles.inputLight}
             type="text"
             placeholder="https://github.com/someone/something"
             value={url}
             onChange={e => setUrl(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
           />
-          <button className={styles.button} onClick={() => handleSubmit()} disabled={loading}>
+          <button className={dark ? styles.buttonDark : styles.buttonLight} onClick={() => handleSubmit()} disabled={loading}>
             {loading ? 'Thinking...' : 'Explain this'}
           </button>
         </div>
 
         {browseOpen && (
-          <div className={styles.browsePanel}>
-            <div className={styles.browseHeader}>
-              <span className={styles.browseTitle}>
+          <div className={dark ? styles.browsePanelDark : styles.browsePanelLight}>
+            <div className={dark ? styles.browseHeaderDark : styles.browseHeaderLight}>
+              <span className={dark ? styles.browseTitleDark : styles.browseTitleLight}>
                 {reposLoading ? 'Loading...' : `${filteredRepos.length} builds`}
               </span>
               <input
-                className={styles.browseSearch}
+                className={dark ? styles.browseSearchDark : styles.browseSearchLight}
                 type="text"
                 placeholder="Search..."
                 value={search}
@@ -148,18 +162,15 @@ export default function Home() {
               {filteredRepos.map(repo => (
                 <div
                   key={repo.name}
-                  className={`${styles.repoItem} ${activeRepo === repo.url ? styles.repoItemActive : ''}`}
+                  className={`${dark ? styles.repoItemDark : styles.repoItemLight} ${activeRepo === repo.url ? (dark ? styles.repoItemActiveDark : styles.repoItemActiveLight) : ''}`}
                   onClick={() => { setActiveRepo(repo.url); setResult(null); setError(''); handleSubmit(repo.url); setBrowseOpen(false); }}
                 >
-                  <span
-                    className={styles.repoDot}
-                    style={{ background: LANG_COLORS[repo.language] || '#888' }}
-                  />
+                  <span className={styles.repoDot} style={{ background: LANG_COLORS[repo.language] || '#888' }} />
                   <div className={styles.repoInfo}>
-                    <div className={styles.repoName}>{repo.name}</div>
-                    {repo.description && <div className={styles.repoDesc}>{repo.description}</div>}
+                    <div className={dark ? styles.repoNameDark : styles.repoNameLight}>{repo.name}</div>
+                    {repo.description && <div className={dark ? styles.repoDescDark : styles.repoDescLight}>{repo.description}</div>}
                   </div>
-                  <span className={styles.repoDate}>
+                  <span className={dark ? styles.repoDateDark : styles.repoDateLight}>
                     {new Date(repo.pushedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
                 </div>
@@ -168,27 +179,27 @@ export default function Home() {
           </div>
         )}
 
-        {error && <div className={styles.error}>{error}</div>}
-        {loading && <div className={styles.thinking}>Thinking...</div>}
+        {error && <div className={dark ? styles.errorDark : styles.errorLight}>{error}</div>}
+        {loading && <div className={dark ? styles.thinkingDark : styles.thinkingLight}>Thinking...</div>}
 
         {result && (
-          <div className={styles.result}>
-            <div className={styles.resultTop}>
-              <span className={styles.resultName}>{result.meta?.name}</span>
-              {result.meta?.language && <span className={styles.badge}>{result.meta.language}</span>}
+          <div className={dark ? styles.resultDark : styles.resultLight}>
+            <div className={dark ? styles.resultTopDark : styles.resultTopLight}>
+              <span className={dark ? styles.resultNameDark : styles.resultNameLight}>{result.meta?.name}</span>
+              {result.meta?.language && <span className={dark ? styles.badgeDark : styles.badgeLight}>{result.meta.language}</span>}
               {result.meta?.updatedAt && (
-                <span className={styles.resultDate}>
+                <span className={dark ? styles.resultDateDark : styles.resultDateLight}>
                   updated {new Date(result.meta.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
               )}
             </div>
             <div className={styles.resultBody}>
               {sections.map((section: string, i: number) => (
-                <div key={i} className={styles.section}>
-                  <div className={styles.sectionLabel}>
+                <div key={i} className={dark ? styles.sectionDark : styles.sectionLight}>
+                  <div className={dark ? styles.sectionLabelDark : styles.sectionLabelLight}>
                     {i === 0 ? 'What it is' : i === 1 ? 'Why it matters' : i === 2 ? 'Status' : i === 3 ? 'Recent commits' : 'Note'}
                   </div>
-                  <div className={styles.sectionText}>{section}</div>
+                  <div className={dark ? styles.sectionTextDark : styles.sectionTextLight}>{section}</div>
                 </div>
               ))}
             </div>
