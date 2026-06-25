@@ -25,7 +25,7 @@ function daysSince(dateStr: string): number {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-type PersonalityMode = 'default' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku';
+type PersonalityMode = 'normie' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku';
 
 function getPersonalityPrompt(mode: PersonalityMode): string {
   switch (mode) {
@@ -53,14 +53,14 @@ function getPersonalityPrompt(mode: PersonalityMode): string {
     case 'otaku':
       return `You explain GitHub repos like a passionate anime fan who sees everything through the lens of manga and anime arcs. The repo is someone's hero journey. The commits are key episodes. The README is the opening exposition. Reference shonen tropes — power levels, training arcs, rival characters, the moment a character goes beyond their limits. Use phrases like "this arc goes hard", "the character development", "final boss energy", "main character coded". Be genuinely hyped like this is the best arc of the season.`;
 
-    default:
+    case 'normie':
       return `You explain GitHub repos to people who know nothing about code. Write like you're texting a smart friend, not writing a tech article. No jargon. No bullet points.`;
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { url, mode = 'default' } = await req.json();
+    const { url, mode = 'normie' } = await req.json();
     if (!url) return NextResponse.json({ error: 'No URL provided' }, { status: 400 });
 
     const { owner, repo } = parseGitHubUrl(url);
