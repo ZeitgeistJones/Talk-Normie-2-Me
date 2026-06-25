@@ -296,6 +296,3 @@ export default function Home() {
     </Providers>
   );
 }
-.wallHeadingLight { font-size: 15px; font-weight: 500; color: #1a1a1a; margin-bottom: 8px; }
-.wallHeadingDark { font-size: 15px; font-weight: 500; color: #e0e0e0; margin-bottom: 8px; }
-.wallConnect { margin-top: 16px; display: flex; justify-content: center; }
