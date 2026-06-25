@@ -18,6 +18,20 @@ const CLAWD_GATE_ABI = [
 
 const FREE_LIMIT = 2;
 
+type PersonalityMode = 'default' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku';
+
+const MODES: { id: PersonalityMode; label: string; emoji: string }[] = [
+  { id: 'default',     label: 'Normal',      emoji: '💬' },
+  { id: 'fullnormie',  label: 'Full Normie', emoji: '🧠' },
+  { id: 'bro',         label: 'Bro',         emoji: '💪' },
+  { id: 'flirty',      label: 'Flirty',      emoji: '😘' },
+  { id: 'emo',         label: 'Emo',         emoji: '🖤' },
+  { id: 'brainrot',    label: 'Brainrot',    emoji: '🫠' },
+  { id: 'sporty',      label: 'Sporty',      emoji: '🏆' },
+  { id: 'otaku',       label: 'Otaku',       emoji: '⚡' },
+  { id: 'conspiracy',  label: 'Conspiracy',  emoji: '🕵️' },
+];
+
 type Repo = {
   name: string;
   description: string;
@@ -49,6 +63,7 @@ function App() {
   const [dark, setDark] = useState(false);
   const [useCount, setUseCount] = useState(0);
   const [showWall, setShowWall] = useState(false);
+  const [mode, setMode] = useState<PersonalityMode>('default');
   const cache: Record<string, any> = {};
 
   const { address, isConnected } = useAccount();
@@ -106,7 +121,8 @@ function App() {
       return;
     }
 
-    if (cache[target]) { setResult(cache[target]); return; }
+    const cacheKey = `${target}__${mode}`;
+    if (cache[cacheKey]) { setResult(cache[cacheKey]); return; }
     setLoading(true); setError(''); setResult(null);
 
     if (!isUnlocked) {
@@ -119,11 +135,11 @@ function App() {
       const res = await fetch('/api/explain', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: target })
+        body: JSON.stringify({ url: target, mode })
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      cache[target] = data;
+      cache[cacheKey] = data;
       setResult(data);
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
@@ -142,6 +158,8 @@ function App() {
       .filter((s: string[]) => s.length > 0)
       .map((s: string[]) => s.join(' '))
     : [];
+
+  const currentMode = MODES.find(m => m.id === mode)!;
 
   return (
     <main className={dark ? styles.mainDark : styles.mainLight}>
@@ -181,6 +199,25 @@ function App() {
           {dark ? 'Still plain English, just darker.' : 'Paste any GitHub link. Get a plain English breakdown.'}
         </p>
 
+        {/* Mode Selector */}
+        <div className={dark ? styles.modeSelectorDark : styles.modeSelectorLight}>
+          {MODES.map(m => (
+            <button
+              key={m.id}
+              onClick={() => { setMode(m.id); setResult(null); }}
+              className={
+                mode === m.id
+                  ? (dark ? styles.modeChipActiveDark : styles.modeChipActiveLight)
+                  : (dark ? styles.modeChipDark : styles.modeChipLight)
+              }
+              title={m.label}
+            >
+              <span>{m.emoji}</span>
+              <span>{m.label}</span>
+            </button>
+          ))}
+        </div>
+
         {browseOpen && (
           <p className={dark ? styles.clawdHintDark : styles.clawdHintLight}>
             CLAWD repos include context on why each build matters for token holders — not just what it does.
@@ -197,7 +234,7 @@ function App() {
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
           />
           <button className={dark ? styles.buttonDark : styles.buttonLight} onClick={() => handleSubmit()} disabled={loading}>
-            {loading ? 'Thinking...' : 'Explain this'}
+            {loading ? 'Thinking...' : `Explain ${currentMode.emoji}`}
           </button>
         </div>
 
@@ -251,13 +288,30 @@ function App() {
         )}
 
         {error && <div className={dark ? styles.errorDark : styles.errorLight}>{error}</div>}
-        {loading && <div className={dark ? styles.thinkingDark : styles.thinkingLight}>Thinking...</div>}
+        {loading && (
+          <div className={dark ? styles.thinkingDark : styles.thinkingLight}>
+            {mode === 'fullnormie' && 'Making it super simple...'}
+            {mode === 'flirty' && 'Sliding into your DMs...'}
+            {mode === 'emo' && 'Staring into the void...'}
+            {mode === 'bro' && 'Getting gains on this explanation...'}
+            {mode === 'conspiracy' && 'Following the threads...'}
+            {mode === 'brainrot' && 'Cooking fr fr...'}
+            {mode === 'sporty' && 'Warming up...'}
+            {mode === 'otaku' && 'Entering the arc...'}
+            {mode === 'default' && 'Thinking...'}
+          </div>
+        )}
 
         {result && !showWall && (
           <div className={dark ? styles.resultDark : styles.resultLight}>
             <div className={dark ? styles.resultTopDark : styles.resultTopLight}>
               <span className={dark ? styles.resultNameDark : styles.resultNameLight}>{result.meta?.name}</span>
               {result.meta?.language && <span className={dark ? styles.badgeDark : styles.badgeLight}>{result.meta.language}</span>}
+              {mode !== 'default' && (
+                <span className={dark ? styles.modeBadgeDark : styles.modeBadgeLight}>
+                  {currentMode.emoji} {currentMode.label}
+                </span>
+              )}
               {result.meta?.updatedAt && (
                 <span className={dark ? styles.resultDateDark : styles.resultDateLight}>
                   updated {new Date(result.meta.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -268,7 +322,7 @@ function App() {
               {sections.map((section: string, i: number) => (
                 <div key={i} className={dark ? styles.sectionDark : styles.sectionLight}>
                   <div className={dark ? styles.sectionLabelDark : styles.sectionLabelLight}>
-                   {i === 0 ? 'What it is' : i === 1 ? 'Why it matters' : i === 2 ? 'Status' : i === 3 ? 'Recent commits' : 'Why it stopped'}
+                    {i === 0 ? 'What it is' : i === 1 ? 'Why it matters' : i === 2 ? 'Status' : i === 3 ? 'Recent commits' : 'Why it stopped'}
                   </div>
                   <div className={dark ? styles.sectionTextDark : styles.sectionTextLight}>{section}</div>
                 </div>
