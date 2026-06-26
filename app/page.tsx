@@ -18,7 +18,7 @@ const CLAWD_GATE_ABI = [
 
 const FREE_LIMIT = 2;
 
-type PersonalityMode = 'normie' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku';
+type PersonalityMode = 'normie' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku' | 'poetry';
 
 const MODES: { id: PersonalityMode; label: string; emoji: string }[] = [
   { id: 'normie',      label: 'Normie',      emoji: '💬' },
@@ -30,6 +30,7 @@ const MODES: { id: PersonalityMode; label: string; emoji: string }[] = [
   { id: 'sporty',      label: 'Sporty',      emoji: '🏆' },
   { id: 'otaku',       label: 'Otaku',       emoji: '⚡' },
   { id: 'conspiracy',  label: 'Conspiracy',  emoji: '🕵️' },
+  { id: 'poetry',      label: 'Poetry',      emoji: '🎭' },
 ];
 
 function stripSectionLabel(text: string): string {
@@ -39,11 +40,6 @@ function stripSectionLabel(text: string): string {
     .trim();
 }
 
-// Splits a block of text into separate lines wherever a "COMMIT N:" marker
-// starts, even if the model ran everything together without real line breaks.
-// This makes commit rendering robust regardless of how the model formats
-// whitespace, since we no longer rely on blank-line paragraph splitting for
-// the individual commits within the "Recent commits" section.
 function splitCommitLines(text: string): string[] {
   const withBreaks = text.replace(/\s*(COMMIT\s*\d+:)/gi, '\n$1').trim();
   return withBreaks
@@ -172,15 +168,6 @@ function App() {
     finally { setLoading(false); }
   }
 
-  // Sections come back from the model separated by blank lines:
-  //   0: What it is
-  //   1: Why it matters
-  //   2: Status (includes "why it stopped" inline when the repo is abandoned)
-  //   3: Recent commits — a single block containing 3 "COMMIT N:" marked lines
-  //
-  // Because the commits section is one block (not 3 separate blank-line
-  // sections), we only ever expect 4 top-level sections now. Index 3 is
-  // split further, below, into individual commit lines for display.
   const rawSections = result?.explanation
     ? result.explanation
         .split('\n')
@@ -198,10 +185,6 @@ function App() {
         .filter((s: string) => s.length > 0)
     : [];
 
-  // Defensive: if the model still splits commits across multiple blank-line
-  // sections despite instructions, merge every section from index 3 onward
-  // into one block before splitting on COMMIT markers, so commits never
-  // bleed into a mislabeled trailing section.
   const sections = rawSections.length > 3
     ? [...rawSections.slice(0, 3), rawSections.slice(3).join(' ')]
     : rawSections;
@@ -218,6 +201,7 @@ function App() {
     brainrot:   'Cooking fr fr...',
     sporty:     'Warming up...',
     otaku:      'Entering the arc...',
+    poetry:     'Finding the rhyme...',
   };
 
   return (
@@ -234,7 +218,6 @@ function App() {
               </div>
               <div className={dark ? styles.bubbleSmallDark : styles.bubbleSmallLight} />
             </div>
-            {/* Logo title with clickable mode word */}
             <span className={dark ? styles.logoTextDark : styles.logoTextLight}>
               Talk{' '}
               <button
