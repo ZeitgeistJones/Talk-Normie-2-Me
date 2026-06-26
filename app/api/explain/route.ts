@@ -25,8 +25,6 @@ function daysSince(dateStr: string): number {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-// Precise, timezone-aware timestamp for the model to optionally surface,
-// e.g. "Jun 24, 2026, 3:47 PM UTC". Falls back gracefully if the date is invalid.
 function preciseTimestamp(dateStr: string): string {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
@@ -41,7 +39,7 @@ function preciseTimestamp(dateStr: string): string {
   });
 }
 
-type PersonalityMode = 'normie' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku';
+type PersonalityMode = 'normie' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku' | 'poetry';
 
 function getPersonalityPrompt(mode: PersonalityMode): string {
   switch (mode) {
@@ -68,6 +66,9 @@ function getPersonalityPrompt(mode: PersonalityMode): string {
 
     case 'otaku':
       return `You explain GitHub repos like a passionate anime fan who sees everything through the lens of manga and anime arcs. The repo is someone's hero journey. The commits are key episodes. The README is the opening exposition. Reference shonen tropes — power levels, training arcs, rival characters, the moment a character goes beyond their limits. Use phrases like "this arc goes hard", "the character development", "final boss energy", "main character coded". Be genuinely hyped like this is the best arc of the season.`;
+
+    case 'poetry':
+      return `You explain GitHub repos entirely in verse. Use rhyme and rhythm throughout — couplets, quatrains, whatever feels right for the repo's vibe. Each section should flow as a poem, not prose. Still cover all four sections accurately, but every line should scan and rhyme. Think spoken word meets tech breakdown. Be lyrical, vivid, and a little dramatic.`;
 
     case 'normie':
       return `You explain GitHub repos to people who know nothing about code. Write like you're texting a smart friend, not writing a tech article. No jargon. No bullet points.`;
@@ -123,17 +124,12 @@ export async function POST(req: NextRequest) {
       ? `Section 2: Why this matters to someone holding the CLAWD token specifically. Use the chronicle context above to make this accurate and specific.`
       : `Section 2: Who would actually find this useful and why — what kind of person or project would want to use this.`;
 
-    // Folded into Status (Section 3) as an optional addendum, rather than a
-    // separate trailing section, so it never collides with the commit list below.
     const abandonedAddendum = isAbandoned
       ? ` It hasn't been updated in ${lastCommitDays} days — give your best read on why it might have stopped (finished, replaced by something else, abandoned mid-build, or something else), based on the README, commit messages, and description.`
       : '';
 
     const personalityPrompt = getPersonalityPrompt(mode as PersonalityMode);
 
-    // Each commit gets an explicit marker (COMMIT 1:, COMMIT 2:, ...) on its own
-    // line so the frontend can split deterministically, even if the model puts
-    // all three in one paragraph block instead of separating them with blank lines.
     const commitInstructions = commits
       .map((c: any, i: number) => `COMMIT ${i + 1}: "${c.message}" — ${c.date} (precise: ${c.preciseDate})`)
       .join('\n');
