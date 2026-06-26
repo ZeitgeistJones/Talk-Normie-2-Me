@@ -170,9 +170,9 @@ function App() {
 
   const rawSections = result?.explanation
     ? result.explanation
-        .split('\n')
-        .reduce((acc: string[][], line: string) => {
-          if (line.trim() === '') {
+  .split('\n')
+  .reduce((acc: string[][], line: string) => {
+    if (line.trim() === '' || line.trim() === '---') {
             if (acc[acc.length - 1]?.length > 0) acc.push([]);
           } else {
             if (!acc.length) acc.push([]);
