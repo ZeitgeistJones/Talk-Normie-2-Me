@@ -17,14 +17,21 @@ export async function GET() {
       page++;
     }
 
-    return NextResponse.json(allRepos.map((r: any) => ({
-      name: r.name,
-      description: r.description,
-      url: r.html_url,
-      language: r.language,
-      pushedAt: r.pushed_at,
-      stars: r.stargazers_count,
-    })));
+    return NextResponse.json(
+      allRepos.map((r: any) => ({
+        name: r.name,
+        description: r.description,
+        url: r.html_url,
+        language: r.language,
+        pushedAt: r.pushed_at,
+        stars: r.stargazers_count,
+      })),
+      {
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
+    );
 
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
