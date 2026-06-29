@@ -25,20 +25,6 @@ function daysSince(dateStr: string): number {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-function preciseTimestamp(dateStr: string): string {
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: 'UTC',
-    timeZoneName: 'short',
-  });
-}
-
 type PersonalityMode = 'normie' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku' | 'poetry';
 
 function getPersonalityPrompt(mode: PersonalityMode): string {
@@ -59,7 +45,7 @@ function getPersonalityPrompt(mode: PersonalityMode): string {
       return `You explain GitHub repos like everything is connected and there's something they don't want you to know. The commit messages are coded messages. The README is a cover story. Who REALLY built this and WHY? Connect dots that don't need connecting. Be paranoid but compelling. Use phrases like "think about it", "they don't want you to see this", "follow the money", "it's all right there if you look". Still explain the actual repo but make it sound like a revelation.`;
 
     case 'brainrot':
-      return `You explain GitHub repos in full Gen Alpha / TikTok brainrot. Use: skibidi, rizz, no cap, bussin, slay, based, sigma, ohio, grimace shake, only in ohio, fr fr, goated, NPC, looksmaxxing (adapted), pookies, delulu, understood the assignment, main character energy. Every sentence should feel like it came from a 14-year-old who has been online too long. Still explain the repo accurately but it should be chaotic and unhinged.`;
+      return `You explain GitHub repos in full Gen Alpha / TikTok brainrot. Use: skibidi, rizz, no cap, bussin, slay, based, sigma, ohio, fr fr, goated, NPC, pookies, delulu, understood the assignment, main character energy. Every sentence should feel like it came from a 14-year-old who has been online too long. Still explain the repo accurately but it should be chaotic and unhinged.`;
 
     case 'sporty':
       return `You explain GitHub repos like a coach giving a halftime speech. This is about heart, hustle, and execution. Use sports metaphors for everything — commits are plays, the README is the game plan, bugs are turnovers. Be motivational, intense, pumped up. Phrases like "this team showed up", "left it all on the field", "game tape doesn't lie", "championship-level code". Make the person feel like understanding this repo is a personal victory.`;
@@ -68,10 +54,37 @@ function getPersonalityPrompt(mode: PersonalityMode): string {
       return `You explain GitHub repos like a passionate anime fan who sees everything through the lens of manga and anime arcs. The repo is someone's hero journey. The commits are key episodes. The README is the opening exposition. Reference shonen tropes — power levels, training arcs, rival characters, the moment a character goes beyond their limits. Use phrases like "this arc goes hard", "the character development", "final boss energy", "main character coded". Be genuinely hyped like this is the best arc of the season.`;
 
     case 'poetry':
-      return `You explain GitHub repos entirely in verse. Use rhyme and rhythm throughout — couplets, quatrains, whatever feels right for the repo's vibe. Each section should flow as a poem, not prose. Still cover all four sections accurately, but every line should scan and rhyme. Think spoken word meets tech breakdown. Be lyrical, vivid, and a little dramatic.`;
+      return `You explain GitHub repos as a poet who writes with the deliberate, inky weight of a fountain pen — every word chosen, nothing wasted. Each section is a short poem: spare, imagistic, with line breaks that breathe. No forced rhymes. Think Mary Oliver meets a software changelog. Volta where it earns it. The commit messages are treated like found poems. Be beautiful and precise — never flowery for its own sake.`;
 
     case 'normie':
+    default:
       return `You explain GitHub repos to people who know nothing about code. Write like you're texting a smart friend, not writing a tech article. No jargon. No bullet points.`;
+  }
+}
+
+function getShareHook(mode: PersonalityMode, repoName: string): string {
+  switch (mode) {
+    case 'fullnormie':
+      return `okay so i found this thing called ${repoName} and i asked an AI to explain it like i'm five and honestly?? i get it now. you will too 🧠`;
+    case 'flirty':
+      return `not to be dramatic but ${repoName} might be the most interesting repo i've come across lately 😘 got the full breakdown and i'm a little obsessed`;
+    case 'emo':
+      return `found ${repoName} at 2am and asked an AI to explain it to me. it did. we're both still here, staring into the void together 🖤`;
+    case 'bro':
+      return `BRO. just ran ${repoName} through Talk Normie 2 Me and the explanation absolutely COOKED 💪 no cap this repo is built different`;
+    case 'conspiracy':
+      return `so i looked into ${repoName}. asked an AI to explain it. what i found... they really don't want you to know about this one 🕵️ thread incoming`;
+    case 'brainrot':
+      return `bestie i put ${repoName} into this AI explainer and it went absolutely SKIBIDI fr fr 🫠 the rizz on this repo is unmatched no cap`;
+    case 'sporty':
+      return `just ran ${repoName} through the tape 🏆 the breakdown hit different. this repo left it all on the field and i'm ready to go again`;
+    case 'otaku':
+      return `okay the ${repoName} arc just got explained and i'm not okay ⚡ this repo's character development goes HARD. main character coded fr`;
+    case 'poetry':
+      return `asked an AI to explain ${repoName} like a poet with a fountain pen.\n\nit did.\n\nread it.`;
+    case 'normie':
+    default:
+      return `just used Talk Normie 2 Me to finally understand what ${repoName} actually does and honestly it's pretty cool — plain English breakdown, no jargon`;
   }
 }
 
@@ -109,7 +122,6 @@ export async function POST(req: NextRequest) {
     const commits = commitsData.slice(0, 3).map((c: any) => ({
       message: c.commit.message,
       date: new Date(c.commit.author.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      preciseDate: preciseTimestamp(c.commit.author.date),
       rawDate: c.commit.author.date,
     }));
 
@@ -124,15 +136,11 @@ export async function POST(req: NextRequest) {
       ? `Section 2: Why this matters to someone holding the CLAWD token specifically. Use the chronicle context above to make this accurate and specific.`
       : `Section 2: Who would actually find this useful and why — what kind of person or project would want to use this.`;
 
-    const abandonedAddendum = isAbandoned
-      ? ` It hasn't been updated in ${lastCommitDays} days — give your best read on why it might have stopped (finished, replaced by something else, abandoned mid-build, or something else), based on the README, commit messages, and description.`
+    const abandonedSection = isAbandoned
+      ? `\nSection 5: This repo hasn't been updated in ${lastCommitDays} days. Give your best read on why it might have stopped — was it finished, replaced, or abandoned mid-build?`
       : '';
 
     const personalityPrompt = getPersonalityPrompt(mode as PersonalityMode);
-
-    const commitInstructions = commits
-      .map((c: any, i: number) => `COMMIT ${i + 1}: "${c.message}" — ${c.date} (precise: ${c.preciseDate})`)
-      .join('\n');
 
     const prompt = `${personalityPrompt}
 
@@ -142,11 +150,12 @@ Section 1: What this repo actually is and who it's for.
 
 ${section2}
 
-Section 3: Whether it looks alive or abandoned based on the commit dates.${abandonedAddendum}
+Section 3: Whether it looks alive or abandoned based on the commit dates.
 
-Section 4: The last 3 commits in plain English. This section MUST contain exactly 3 lines, one per commit, each on its own line (use a real line break between them, do not run them together). Each line MUST start with the literal marker "COMMIT N:" (N = 1, 2, or 3), then the date in brackets like [Jun 24, 2026], then a one or two sentence explanation of what changed and why it matters. If a precise timestamp is available, you may mention the time of day naturally in the explanation (e.g. "shipped late Tuesday night"). Do not add a blank line between the 3 commit lines — they must stay together as one section.
+Section 4: The last 3 commits. Write each as its own paragraph separated by a blank line. Start each with the date in brackets like [Jun 24, 2026] then explain what changed in one or two sentences.
+${abandonedSection}
 
-Keep the whole thing under 350 words. Stay in character for the entire response.
+Keep the whole thing under 350 words. Stay in character the entire time — do not break voice.
 
 Repo name: ${repoData.name}
 Description: ${repoData.description || 'No description'}
@@ -157,8 +166,8 @@ Owner: ${owner}
 README:
 ${readmeText}
 
-Last 3 commits (use these exact dates/timestamps, do not invent your own):
-${commitInstructions}`;
+Last 3 commits:
+${commits.map((c: any, i: number) => `${i + 1}. "${c.message}" — ${c.date}`).join('\n')}`;
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
@@ -167,9 +176,12 @@ ${commitInstructions}`;
     });
 
     const text = message.content[0].type === 'text' ? message.content[0].text : '';
+    const shareHook = getShareHook(mode as PersonalityMode, repoData.name);
 
     return NextResponse.json({
       explanation: text,
+      shareHook,
+      repoUrl: `https://github.com/${owner}/${repo}`,
       meta: {
         name: repoData.name,
         description: repoData.description,
