@@ -201,9 +201,10 @@ ${commits.map((c: any, i: number) => `${i + 1}. "${c.message}" — ${c.date}`).j
     } else {
       const personalityPrompt = getPersonalityPrompt(mode as PersonalityMode);
 
+      const voiceReminder = `Stay fully in character — do not slip into neutral or informational tone here.`;
       const section2 = isClawd
-        ? `Section 2: Why this matters to someone holding the CLAWD token specifically. Use the chronicle context above to make this accurate and specific. Write at least 4 sentences here — don't end abruptly. Build to the point, give it some texture, and close with a clear takeaway.`
-        : `Section 2: Who would actually find this useful and why — what kind of person or project would want to use this. Write at least 4 sentences here — don't end abruptly. Give it texture and close with a clear takeaway.`;
+        ? `Section 2: Why this matters to someone holding the CLAWD token specifically. Use the chronicle context above to make this accurate and specific. Write at least 4 sentences — don't end abruptly. Build to the point, give it texture, close with a clear takeaway. ${voiceReminder}`
+        : `Section 2: Who would actually find this useful and why — what kind of person or project would want to use this. Write at least 4 sentences — don't end abruptly. Give it texture and close with a clear takeaway. ${voiceReminder}`;
 
       const abandonedSection = isAbandoned
         ? `\nSection 5: This repo hasn't been updated in ${lastCommitDays} days. Give your best read on why it might have stopped — was it finished, replaced, or abandoned mid-build?`
