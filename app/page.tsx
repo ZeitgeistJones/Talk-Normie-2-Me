@@ -1,670 +1,773 @@
-cat > /home/claude/talk-normie-2-me/app/shareCards.ts << 'TSEOF'
-// Per-mode canvas share card generators
-// Each returns a data URL (PNG) drawn on a 900x540 canvas
+'use client';
 
-type PersonalityMode = 'normie' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku' | 'poetry';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useAccount, useReadContract } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { Providers } from './providers';
+import styles from './page.module.css';
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lineH: number): number {
-  const words = text.split(' ');
-  let line = '';
-  for (const word of words) {
-    const test = line ? line + ' ' + word : word;
-    if (ctx.measureText(test).width > maxW && line) {
-      ctx.fillText(line, x, y);
-      line = word;
-      y += lineH;
-    } else {
-      line = test;
-    }
-  }
-  if (line) { ctx.fillText(line, x, y); y += lineH; }
-  return y;
+const CLAWD_GATE = '0xc22B7b983EC81523c969753c2385106835E8CfCE' as const;
+const CLAWD_GATE_ABI = [
+  {
+    name: 'hasAccess',
+    type: 'function',
+    inputs: [
+      { name: 'wallet', type: 'address' },
+      { name: 'tier', type: 'uint8' },
+    ],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'view',
+  },
+] as const;
+
+const FREE_LIMIT = 2;
+
+type PersonalityMode =
+  | 'normie'
+  | 'fullnormie'
+  | 'flirty'
+  | 'emo'
+  | 'bro'
+  | 'conspiracy'
+  | 'brainrot'
+  | 'sporty'
+  | 'otaku'
+  | 'poetry';
+
+const MODES: { id: PersonalityMode; label: string; emoji: string }[] = [
+  { id: 'normie', label: 'Normie', emoji: '💬' },
+  { id: 'fullnormie', label: 'Full Normie', emoji: '🧠' },
+  { id: 'bro', label: 'Bro', emoji: '💪' },
+  { id: 'flirty', label: 'Flirty', emoji: '😘' },
+  { id: 'emo', label: 'Emo', emoji: '🖤' },
+  { id: 'brainrot', label: 'Brainrot', emoji: '🫠' },
+  { id: 'sporty', label: 'Sporty', emoji: '🏆' },
+  { id: 'otaku', label: 'Otaku', emoji: '⚡' },
+  { id: 'conspiracy', label: 'Conspiracy', emoji: '🕵️' },
+  { id: 'poetry', label: 'Poetry', emoji: '🪶' },
+];
+
+const MODE_TEXT_STYLE: Record<PersonalityMode, React.CSSProperties> = {
+  normie: { fontFamily: 'system-ui, sans-serif' },
+  fullnormie: {
+    fontFamily: 'system-ui, sans-serif',
+    fontSize: '15px',
+    lineHeight: '1.9',
+    letterSpacing: '0.01em',
+  },
+  bro: {
+    fontFamily: '"Arial Black", "Impact", system-ui, sans-serif',
+    fontWeight: 700,
+    letterSpacing: '-0.01em',
+    lineHeight: '1.5',
+  },
+  flirty: {
+    fontFamily: 'Georgia, "Palatino Linotype", serif',
+    fontStyle: 'italic',
+    lineHeight: '1.85',
+    fontSize: '14px',
+  },
+  emo: {
+    fontFamily: '"Courier New", Courier, monospace',
+    fontSize: '13px',
+    lineHeight: '1.95',
+    letterSpacing: '0.02em',
+  },
+  brainrot: {
+    fontFamily: 'system-ui, sans-serif',
+    letterSpacing: '0.03em',
+    lineHeight: '1.8',
+    fontSize: '13.5px',
+  },
+  sporty: {
+    fontFamily: '"Arial Black", Impact, system-ui, sans-serif',
+    fontWeight: 800,
+    lineHeight: '1.45',
+    letterSpacing: '0.02em',
+    textTransform: 'uppercase',
+    fontSize: '12px',
+  },
+  otaku: {
+    fontFamily: 'system-ui, sans-serif',
+    lineHeight: '1.95',
+    letterSpacing: '0.04em',
+    fontSize: '13.5px',
+  },
+  conspiracy: {
+    fontFamily: '"Courier New", Courier, monospace',
+    fontSize: '12.5px',
+    lineHeight: '1.9',
+    letterSpacing: '0.03em',
+  },
+  poetry: {
+    fontFamily: 'Georgia, "Times New Roman", serif',
+    fontStyle: 'normal',
+    fontSize: '15px',
+    lineHeight: '1.95',
+    letterSpacing: '0.005em',
+    whiteSpace: 'pre-wrap',
+  },
+};
+
+const MODE_LABEL_STYLE: Record<PersonalityMode, React.CSSProperties> = {
+  normie: {},
+  fullnormie: { fontSize: '11px' },
+  bro: {
+    fontFamily: '"Arial Black", Impact, sans-serif',
+    letterSpacing: '0.15em',
+    fontSize: '9px',
+  },
+  flirty: {
+    fontFamily: 'Georgia, serif',
+    fontStyle: 'italic',
+    textTransform: 'none',
+    letterSpacing: '0.02em',
+    fontSize: '11px',
+  },
+  emo: {
+    fontFamily: '"Courier New", monospace',
+    letterSpacing: '0.12em',
+  },
+  brainrot: { letterSpacing: '0.1em' },
+  sporty: {
+    fontFamily: '"Arial Black", Impact, sans-serif',
+    letterSpacing: '0.2em',
+    fontSize: '9px',
+  },
+  otaku: { letterSpacing: '0.18em' },
+  conspiracy: {
+    fontFamily: '"Courier New", monospace',
+    letterSpacing: '0.15em',
+    fontSize: '9px',
+  },
+  poetry: {
+    fontFamily: 'Georgia, serif',
+    textTransform: 'none',
+    fontStyle: 'italic',
+    letterSpacing: '0.01em',
+    fontSize: '11px',
+    opacity: 0.55,
+  },
+};
+
+function stripSectionLabel(text: string): string {
+  return text
+    .replace(/^#+\s+[IVX]+\.\s+[^\n]*/gm, '')
+    .replace(/^\*?\*?Section\s+\d+[:\s][^\n]*\*?\*?\s*/i, '')
+    .replace(/^\*\*[^*]+\*\*\s*/, '')
+    .replace(/^---+\s*/gm, '')
+    .replace(/^\s*\n/, '')
+    .trim();
 }
 
-function wrapLines(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lineH: number): number {
-  const rawLines = text.split('\n');
-  for (const rawLine of rawLines) {
-    if (rawLine.trim() === '') { y += lineH * 0.6; continue; }
-    y = wrapText(ctx, rawLine, x, y, maxW, lineH);
-  }
-  return y;
+function parsePoetryStanzas(text: string): string[] {
+  return text
+    .split(/\n{2,}/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && !s.match(/^#+\s/) && !s.match(/^---+$/));
 }
 
-// ── POETRY — aged manuscript paper ──────────────────────────────────────────
-function drawPoetry(ctx: CanvasRenderingContext2D, W: number, H: number, repoName: string, hook: string) {
-  // Warm parchment
-  ctx.fillStyle = '#f5f0e6';
-  ctx.fillRect(0, 0, W, H);
+type Repo = {
+  name: string;
+  description: string;
+  url: string;
+  language: string;
+  pushedAt: string;
+  stars: number;
+};
 
-  // Subtle horizontal lines
-  ctx.strokeStyle = 'rgba(160,140,100,0.18)';
-  ctx.lineWidth = 1;
-  for (let y = 64; y < H - 40; y += 30) {
-    ctx.beginPath(); ctx.moveTo(50, y); ctx.lineTo(W - 50, y); ctx.stroke();
-  }
+const LANG_COLORS: Record<string, string> = {
+  TypeScript: '#3b82f6',
+  JavaScript: '#f59e0b',
+  Python: '#f59e0b',
+  Shell: '#10b981',
+  Solidity: '#8b5cf6',
+  HTML: '#ef4444',
+};
 
-  // Left margin crease shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.03)';
-  ctx.fillRect(0, 0, 8, H);
+const SECTION_LABELS: Record<PersonalityMode, string[]> = {
+  normie: ['What it is', 'Why it matters', 'Status', 'Recent commits', 'Why it stopped'],
+  fullnormie: ['What it is', 'Why it matters', 'Is it alive?', 'What changed', 'Why it stopped'],
+  bro: ['THE REP 💪', 'WHY IT SLAPS', 'ALIVE OR DEAD', 'RECENT PLAYS', 'WHY IT QUIT'],
+  flirty: ['what it is 💋', 'why you want it', 'seeing anyone?', 'recently active', 'why it ghosted'],
+  emo: ['what this is', 'why it hurts', 'still breathing?', 'the last words', 'where it went'],
+  brainrot: ['the lore', 'why it bussin', 'still alive fr?', 'recent glazing', 'why it flopped'],
+  sporty: ['THE PLAYBOOK', 'WHY IT WINS', 'GAME STATUS', 'RECENT PLAYS', 'FINAL WHISTLE'],
+  otaku: ['the lore', 'power level', 'arc status', 'episode recap', 'why it ended'],
+  conspiracy: ['the cover story', 'the real reason', 'still active?', 'the trail', 'why it went dark'],
+  poetry: ['i.', 'ii.', 'iii.', 'iv.', 'v.'],
+};
 
-  // Slight page curl top-right
-  ctx.save();
-  ctx.translate(W, 0);
-  ctx.beginPath();
-  ctx.moveTo(-48, 0);
-  ctx.lineTo(0, 0);
-  ctx.lineTo(0, 48);
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(0,0,0,0.06)';
-  ctx.fill();
-  ctx.restore();
+function useShareCard() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // App name — top left, very small caps
-  ctx.font = '500 11px "Courier New", monospace';
-  ctx.fillStyle = 'rgba(140,120,80,0.7)';
-  ctx.textAlign = 'left';
-  ctx.fillText('TALK NORMIE 2 ME  ·  🪶 POETRY', 60, 44);
+  const generateCard = useCallback(
+    (repoName: string, hook: string, mode: PersonalityMode, modeEmoji: string): Promise<string> => {
+      return new Promise((resolve) => {
+        const W = 900;
+        const H = 540;
+        const canvas = document.createElement('canvas');
+        canvas.width = W;
+        canvas.height = H;
+        canvasRef.current = canvas;
 
-  // Repo name — medium weight serif
-  ctx.font = 'italic 500 20px Georgia, serif';
-  ctx.fillStyle = '#2a1e0a';
-  ctx.fillText(repoName, 60, 90);
-
-  // Thin rule under repo name
-  ctx.strokeStyle = 'rgba(140,120,80,0.3)';
-  ctx.lineWidth = 0.75;
-  ctx.beginPath(); ctx.moveTo(60, 100); ctx.lineTo(W - 60, 100); ctx.stroke();
-
-  // Hook text — italic Georgia, generous leading
-  ctx.font = 'italic 16px Georgia, serif';
-  ctx.fillStyle = '#2e2010';
-  wrapLines(ctx, hook, 60, 138, W - 130, 32);
-
-  // Ink smear decoration — bottom right
-  ctx.save();
-  ctx.globalAlpha = 0.12;
-  ctx.fillStyle = '#1a0a00';
-  ctx.beginPath();
-  ctx.ellipse(W - 100, H - 60, 32, 5, -0.3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(W - 85, H - 55, 14, 3, 0.4, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  // Fountain pen nib glyph
-  ctx.font = '22px serif';
-  ctx.globalAlpha = 0.2;
-  ctx.fillText('✒', W - 80, H - 40);
-  ctx.globalAlpha = 1;
-
-  // URL — bottom, typewriter
-  ctx.font = '11px "Courier New", monospace';
-  ctx.fillStyle = 'rgba(130,110,70,0.7)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 60, H - 36);
-}
-
-// ── EMO — torn spiral notebook page ─────────────────────────────────────────
-function drawEmo(ctx: CanvasRenderingContext2D, W: number, H: number, repoName: string, hook: string) {
-  // Off-white, slightly grey
-  ctx.fillStyle = '#f4f4f2';
-  ctx.fillRect(0, 0, W, H);
-
-  // Faint ruled lines
-  ctx.strokeStyle = 'rgba(180,180,175,0.4)';
-  ctx.lineWidth = 1;
-  for (let y = 60; y < H - 40; y += 28) {
-    ctx.beginPath(); ctx.moveTo(60, y); ctx.lineTo(W - 40, y); ctx.stroke();
-  }
-
-  // Red margin line
-  ctx.strokeStyle = 'rgba(200,70,70,0.35)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(96, 30); ctx.lineTo(96, H - 30); ctx.stroke();
-
-  // Spiral holes — left edge
-  ctx.fillStyle = '#e8e8e6';
-  ctx.strokeStyle = 'rgba(180,180,175,0.6)';
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 7; i++) {
-    const hy = 56 + i * (H - 80) / 6;
-    ctx.beginPath(); ctx.arc(22, hy, 10, 0, Math.PI * 2);
-    ctx.fill(); ctx.stroke();
-  }
-
-  // Torn top edge
-  ctx.fillStyle = '#f4f4f2';
-  for (let x = 0; x < W; x += 12) {
-    const tear = Math.sin(x * 0.3) * 4 + Math.random() * 3;
-    ctx.fillRect(x, 0, 13, 8 + tear);
-  }
-
-  // Mode label
-  ctx.font = '500 10px "Courier New", monospace';
-  ctx.fillStyle = 'rgba(80,80,80,0.5)';
-  ctx.textAlign = 'left';
-  ctx.fillText('talk normie 2 me  //  emo mode', 110, 38);
-
-  // Repo name — slightly shaky feel
-  ctx.font = '500 18px "Courier New", monospace';
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillText(repoName, 110, 78);
-
-  // Hook text
-  ctx.font = '14px "Courier New", monospace';
-  ctx.fillStyle = '#333';
-  wrapLines(ctx, hook, 110, 118, W - 160, 28);
-
-  // Doodles — stars, small cross
-  ctx.font = '16px serif';
-  ctx.globalAlpha = 0.15;
-  ctx.fillText('✦', W - 80, 60);
-  ctx.fillText('✦', W - 55, 90);
-  ctx.fillText('†', W - 70, 130);
-  ctx.globalAlpha = 1;
-
-  // URL
-  ctx.font = '10px "Courier New", monospace';
-  ctx.fillStyle = 'rgba(120,120,120,0.6)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 110, H - 32);
-}
-
-// ── BRO — gym whiteboard / locker room flyer ─────────────────────────────────
-function drawBro(ctx: CanvasRenderingContext2D, W: number, H: number, repoName: string, hook: string) {
-  // Black
-  ctx.fillStyle = '#0f0f0f';
-  ctx.fillRect(0, 0, W, H);
-
-  // Faint "PR" watermark
-  ctx.font = '900 220px "Arial Black", Impact, sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.03)';
-  ctx.textAlign = 'center';
-  ctx.fillText('PR', W / 2, H / 2 + 80);
-
-  // Bold white border
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(16, 16, W - 32, H - 32);
-
-  // Top accent stripe
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(16, 16, W - 32, 6);
-
-  // W badge
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#fff';
-  ctx.font = '900 11px "Arial Black", sans-serif';
-  const badge = ' 🔥 W REPO ';
-  const bw = ctx.measureText(badge).width + 16;
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(40, 40, bw, 26);
-  ctx.fillStyle = '#000';
-  ctx.font = '900 11px "Arial Black", sans-serif';
-  ctx.fillText(badge, 40, 57);
-
-  // Repo name
-  ctx.fillStyle = '#fff';
-  ctx.font = '900 26px "Arial Black", Impact, sans-serif';
-  ctx.fillText(repoName.toUpperCase(), 40, 100);
-
-  // Hook — all caps
-  ctx.font = '700 13px "Arial Black", sans-serif';
-  ctx.fillStyle = '#ccc';
-  wrapLines(ctx, hook.toUpperCase(), 40, 138, W - 80, 26);
-
-  // URL
-  ctx.font = '11px "Courier New", monospace';
-  ctx.fillStyle = 'rgba(150,150,150,0.7)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 40, H - 36);
-}
-
-// ── CONSPIRACY — redacted government document ────────────────────────────────
-function drawConspiracy(ctx: CanvasRenderingContext2D, W: number, H: number, repoName: string, hook: string) {
-  // Aged yellowy white
-  ctx.fillStyle = '#fefdf5';
-  ctx.fillRect(0, 0, W, H);
-
-  // Document border
-  ctx.strokeStyle = '#bbb';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(20, 20, W - 40, H - 40);
-  ctx.strokeRect(24, 24, W - 48, H - 48);
-
-  // CONFIDENTIAL watermark
-  ctx.save();
-  ctx.translate(W / 2, H / 2);
-  ctx.rotate(-0.42);
-  ctx.font = '900 72px "Arial Black", Impact, sans-serif';
-  ctx.fillStyle = 'rgba(180,40,40,0.06)';
-  ctx.textAlign = 'center';
-  ctx.fillText('CONFIDENTIAL', 0, 20);
-  ctx.restore();
-
-  // Header bar
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(20, 20, W - 40, 44);
-
-  ctx.textAlign = 'left';
-  ctx.font = '700 10px "Courier New", monospace';
-  ctx.fillStyle = '#fff';
-  ctx.fillText('CLASSIFIED  //  EYES ONLY  //  DO NOT DISTRIBUTE', 36, 46);
-
-  // Red CLASSIFIED stamp
-  ctx.save();
-  ctx.translate(W - 120, 105);
-  ctx.rotate(0.08);
-  ctx.strokeStyle = 'rgba(180,40,40,0.65)';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(-4, -20, 100, 28);
-  ctx.font = '900 12px "Arial Black", sans-serif';
-  ctx.fillStyle = 'rgba(180,40,40,0.65)';
-  ctx.textAlign = 'center';
-  ctx.fillText('CLASSIFIED', 46, -3);
-  ctx.restore();
-
-  ctx.textAlign = 'left';
-
-  // File label
-  ctx.font = '11px "Courier New", monospace';
-  ctx.fillStyle = '#555';
-  ctx.fillText(`FILE REF: ${repoName.toUpperCase()}`, 40, 84);
-
-  // Thin rule
-  ctx.strokeStyle = '#ccc';
-  ctx.lineWidth = 0.75;
-  ctx.beginPath(); ctx.moveTo(40, 96); ctx.lineTo(W - 40, 96); ctx.stroke();
-
-  // Hook text with fake redactions
-  const hookWords = hook.split(' ');
-  const redactIdxs = new Set([
-    Math.floor(hookWords.length * 0.3),
-    Math.floor(hookWords.length * 0.6)
-  ]);
-  
-  ctx.font = '13px "Courier New", monospace';
-  ctx.fillStyle = '#1a1a1a';
-  
-  let line = '';
-  let lineWords: string[] = [];
-  let lineHasRedact = false;
-  let y = 126;
-  const maxW = W - 100;
-  
-  for (let i = 0; i <= hookWords.length; i++) {
-    const word = hookWords[i];
-    const isRedact = redactIdxs.has(i);
-    const displayWord = isRedact ? '███████' : word;
-    const test = line ? line + ' ' + (displayWord || '') : (displayWord || '');
-    
-    if ((ctx.measureText(test).width > maxW && line) || i === hookWords.length) {
-      // Draw current line
-      let lx = 40;
-      for (let j = 0; j < lineWords.length; j++) {
-        const lw = lineWords[j];
-        const isR = lw === '███████';
-        if (isR) {
-          const tw = ctx.measureText(lw).width + 4;
-          ctx.fillStyle = '#111';
-          ctx.fillRect(lx - 2, y - 14, tw, 18);
-          lx += tw + ctx.measureText(' ').width;
-        } else {
-          ctx.fillStyle = '#1a1a1a';
-          ctx.fillText(lw, lx, y);
-          lx += ctx.measureText(lw + ' ').width;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve('');
+          return;
         }
-      }
-      lineWords = displayWord ? [displayWord] : [];
-      line = displayWord || '';
-      y += 28;
-    } else {
-      line = test;
-      lineWords.push(displayWord || '');
-    }
-  }
 
-  // URL
-  ctx.font = '10px "Courier New", monospace';
-  ctx.fillStyle = 'rgba(120,120,100,0.7)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 40, H - 42);
+        ctx.fillStyle = '#faf8f4';
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.strokeStyle = 'rgba(180,170,155,0.35)';
+        ctx.lineWidth = 1;
+        for (let y = 72; y < H - 40; y += 32) {
+          ctx.beginPath();
+          ctx.moveTo(60, y);
+          ctx.lineTo(W - 60, y);
+          ctx.stroke();
+        }
+
+        ctx.strokeStyle = 'rgba(210,100,90,0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(108, 40);
+        ctx.lineTo(108, H - 40);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(200,195,185,0.5)';
+        [120, H / 2, H - 120].forEach((y) => {
+          ctx.beginPath();
+          ctx.arc(32, y, 10, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(160,155,148,0.6)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        });
+
+        ctx.font = '500 13px system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(140,130,115,0.8)';
+        ctx.textAlign = 'right';
+        ctx.fillText('talk normie 2 me', W - 60, 52);
+
+        ctx.textAlign = 'left';
+        ctx.font = '500 12px system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(160,150,135,0.7)';
+        ctx.fillText(`${modeEmoji} ${mode}`, 128, 52);
+
+        ctx.font = 'bold 22px system-ui, sans-serif';
+        ctx.fillStyle = '#2a2218';
+        ctx.fillText(repoName, 128, 108);
+
+        ctx.strokeStyle = 'rgba(180,170,155,0.6)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(128, 120);
+        ctx.lineTo(W - 60, 120);
+        ctx.stroke();
+
+        const isPoetry = mode === 'poetry';
+        ctx.font = isPoetry ? 'italic 17px Georgia, serif' : '15px system-ui, sans-serif';
+        ctx.fillStyle = '#3a3020';
+
+        const lines = hook.split('\n');
+        let y = 162;
+        const maxW = W - 190;
+
+        for (const rawLine of lines) {
+          if (rawLine.trim() === '') {
+            y += 20;
+            continue;
+          }
+
+          const words = rawLine.split(' ');
+          let line = '';
+
+          for (const word of words) {
+            const test = line ? `${line} ${word}` : word;
+            const m = ctx.measureText(test);
+
+            if (m.width > maxW && line) {
+              ctx.fillText(line, 128, y);
+              line = word;
+              y += 32;
+            } else {
+              line = test;
+            }
+          }
+
+          if (line) {
+            ctx.fillText(line, 128, y);
+            y += 32;
+          }
+        }
+
+        ctx.font = '500 12px "Courier New", monospace';
+        ctx.fillStyle = 'rgba(150,140,125,0.8)';
+        ctx.fillText('talk-normie-2-me.vercel.app', 128, H - 56);
+
+        resolve(canvas.toDataURL('image/png'));
+      });
+    },
+    []
+  );
+
+  return { generateCard };
 }
 
-// ── FLIRTY — perfumed note on fancy card stock ───────────────────────────────
-function drawFlirty(ctx: CanvasRenderingContext2D, W: number, H: number, repoName: string, hook: string) {
-  // Blush pink
-  ctx.fillStyle = '#fff8f8';
-  ctx.fillRect(0, 0, W, H);
+function ShareButton({
+  result,
+  mode,
+  dark,
+}: {
+  result: any;
+  mode: PersonalityMode;
+  dark: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  const { generateCard } = useShareCard();
+  const currentMode = MODES.find((m) => m.id === mode)!;
 
-  // Subtle vignette
-  const vg = ctx.createRadialGradient(W/2, H/2, 200, W/2, H/2, 600);
-  vg.addColorStop(0, 'rgba(0,0,0,0)');
-  vg.addColorStop(1, 'rgba(180,80,100,0.06)');
-  ctx.fillStyle = vg;
-  ctx.fillRect(0, 0, W, H);
+  async function handleShare() {
+    const hook = result.shareHook || `explained ${result.meta?.name} on Talk Normie 2 Me`;
+    const appUrl = 'https://talk-normie-2-me.vercel.app';
 
-  // Border — double line, rose
-  ctx.strokeStyle = 'rgba(200,130,145,0.5)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(18, 18, W - 36, H - 36);
-  ctx.strokeStyle = 'rgba(200,130,145,0.25)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(24, 24, W - 48, H - 48);
+    const dataUrl = await generateCard(result.meta?.name || 'repo', hook, mode, currentMode.emoji);
 
-  // Decorative corner flourishes
-  const corners = [[36, 36], [W - 36, 36], [36, H - 36], [W - 36, H - 36]];
-  ctx.font = '16px Georgia, serif';
-  ctx.fillStyle = 'rgba(200,130,145,0.3)';
-  ctx.textAlign = 'center';
-  for (const [cx, cy] of corners) {
-    ctx.fillText('✦', cx, cy + 6);
-  }
+    const tweetText = `${hook}\n\n${appUrl}`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
 
-  // App label
-  ctx.textAlign = 'left';
-  ctx.font = 'italic 11px Georgia, serif';
-  ctx.fillStyle = 'rgba(180,100,120,0.6)';
-  ctx.fillText('talk normie 2 me  ·  flirty edition', 50, 50);
-
-  // Repo name
-  ctx.font = 'italic 500 22px Georgia, serif';
-  ctx.fillStyle = '#441828';
-  ctx.fillText(repoName, 50, 92);
-
-  // Rule
-  ctx.strokeStyle = 'rgba(200,130,145,0.35)';
-  ctx.lineWidth = 0.75;
-  ctx.beginPath(); ctx.moveTo(50, 104); ctx.lineTo(W - 50, 104); ctx.stroke();
-
-  // Hook text
-  ctx.font = 'italic 15px Georgia, serif';
-  ctx.fillStyle = '#3a1522';
-  wrapLines(ctx, hook, 50, 138, W - 120, 30);
-
-  // Lipstick kiss mark — stylised
-  ctx.save();
-  ctx.globalAlpha = 0.18;
-  ctx.translate(W - 90, H - 80);
-  ctx.rotate(0.15);
-  ctx.font = '52px serif';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#cc3355';
-  ctx.fillText('💋', 0, 0);
-  ctx.restore();
-
-  // URL
-  ctx.textAlign = 'left';
-  ctx.font = 'italic 11px Georgia, serif';
-  ctx.fillStyle = 'rgba(180,100,120,0.6)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 50, H - 38);
-}
-
-// ── BRAINROT — chaotic meme card ─────────────────────────────────────────────
-function drawBrainrot(ctx: CanvasRenderingContext2D, W: number, H: number, repoName: string, hook: string) {
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, W, H);
-
-  // Random neon blobs
-  const blobs = [
-    { x: 80, y: 80, r: 60, c: 'rgba(255,0,200,0.08)' },
-    { x: W - 100, y: 120, r: 80, c: 'rgba(0,200,255,0.08)' },
-    { x: 200, y: H - 80, r: 70, c: 'rgba(100,255,0,0.07)' },
-    { x: W - 60, y: H - 100, r: 50, c: 'rgba(255,200,0,0.1)' },
-  ];
-  for (const b of blobs) {
-    const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-    g.addColorStop(0, b.c); g.addColorStop(1, 'transparent');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  }
-
-  // Top bar gradient
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, W, 52);
-
-  ctx.font = '700 12px system-ui, sans-serif';
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'left';
-  ctx.fillText('TALK NORMIE 2 ME  🫠  BRAINROT EDITION  FR FR', 24, 33);
-
-  // Big emoji watermark
-  ctx.font = '140px serif';
-  ctx.fillStyle = 'rgba(0,0,0,0.03)';
-  ctx.textAlign = 'center';
-  ctx.fillText('🫠', W / 2, H / 2 + 50);
-
-  // Repo name — Impact-style
-  ctx.textAlign = 'left';
-  ctx.font = '900 26px system-ui, "Arial Black", sans-serif';
-  ctx.fillStyle = '#000';
-  ctx.fillText(repoName, 24, 100);
-
-  // Hook text — mixed case chaos
-  ctx.font = '15px system-ui, sans-serif';
-  ctx.fillStyle = '#111';
-  wrapLines(ctx, hook, 24, 138, W - 60, 28);
-
-  // Sticker-style badge
-  ctx.save();
-  ctx.translate(W - 100, H - 100);
-  ctx.rotate(-0.3);
-  ctx.fillStyle = '#ffe500';
-  ctx.beginPath();
-  for (let i = 0; i < 12; i++) {
-    const angle = (i * Math.PI) / 6;
-    const r = i % 2 === 0 ? 42 : 30;
-    i === 0 ? ctx.moveTo(Math.cos(angle)*r, Math.sin(angle)*r)
-             : ctx.lineTo(Math.cos(angle)*r, Math.sin(angle)*r);
-  }
-  ctx.closePath(); ctx.fill();
-  ctx.font = '900 9px system-ui, sans-serif';
-  ctx.fillStyle = '#000';
-  ctx.textAlign = 'center';
-  ctx.fillText('GOATED', 0, -3);
-  ctx.fillText('FR FR', 0, 9);
-  ctx.restore();
-
-  ctx.textAlign = 'left';
-  ctx.font = '11px system-ui, monospace';
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 24, H - 32);
-}
-
-// ── SPORTY — scoreboard / press release ─────────────────────────────────────
-function drawSporty(ctx: CanvasRenderingContext2D, W: number, H: number, repoName: string, hook: string) {
-  ctx.fillStyle = '#f8f8f8';
-  ctx.fillRect(0, 0, W, H);
-
-  // Header bar
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(0, 0, W, 60);
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '900 12px "Arial Black", Impact, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('TALK NORMIE 2 ME', 24, 38);
-  ctx.font = '700 12px "Arial Black", sans-serif';
-  ctx.fillStyle = '#888';
-  ctx.textAlign = 'right';
-  ctx.fillText('🏆 SPORTY MODE', W - 24, 38);
-
-  // Left accent bar
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(0, 60, 8, H - 60);
-
-  // Repo name — massive
-  ctx.textAlign = 'left';
-  ctx.font = '900 30px "Arial Black", Impact, sans-serif';
-  ctx.fillStyle = '#0a0a0a';
-  ctx.fillText(repoName.toUpperCase(), 28, 108);
-
-  // Underline
-  ctx.strokeStyle = '#1a1a1a';
-  ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(28, 118); ctx.lineTo(W - 28, 118); ctx.stroke();
-
-  // Hook text — uppercase
-  ctx.font = '800 13px "Arial Black", Impact, sans-serif';
-  ctx.fillStyle = '#222';
-  wrapLines(ctx, hook.toUpperCase(), 28, 152, W - 60, 26);
-
-  // Stats badge — bottom left
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(28, H - 72, 110, 36);
-  ctx.font = '700 10px "Arial Black", sans-serif';
-  ctx.fillStyle = '#fff';
-  ctx.fillText('W  ·  DEPLOYED  ·  BUILT', 36, H - 50);
-
-  // URL
-  ctx.font = '10px "Courier New", monospace';
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 28, H - 28);
-}
-
-// ── OTAKU — manga panel ──────────────────────────────────────────────────────
-function drawOtaku(ctx: CanvasRenderingContext2D, W: number, H: number, repoName: string, hook: string) {
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, W, H);
-
-  // Speed lines radiating from top-right
-  ctx.strokeStyle = 'rgba(0,0,0,0.04)';
-  ctx.lineWidth = 1.5;
-  const cx = W, cy = 0;
-  for (let a = Math.PI / 2; a < Math.PI * 1.4; a += 0.06) {
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(a) * 900, cy + Math.sin(a) * 900);
-    ctx.stroke();
-  }
-
-  // Panel borders — thick manga style
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(12, 12, W - 24, H - 24);
-
-  // Inner accent line
-  ctx.lineWidth = 1;
-  ctx.strokeRect(20, 20, W - 40, H - 40);
-
-  // Speech bubble top-right
-  ctx.fillStyle = '#fff';
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(W - 190, 36, 160, 44, 12);
-  ctx.fill(); ctx.stroke();
-  // Bubble tail
-  ctx.beginPath();
-  ctx.moveTo(W - 170, 80); ctx.lineTo(W - 155, 96); ctx.lineTo(W - 140, 80);
-  ctx.fill(); ctx.stroke();
-  ctx.font = '700 10px system-ui, sans-serif';
-  ctx.fillStyle = '#000';
-  ctx.textAlign = 'center';
-  ctx.fillText('⚡ MAIN CHARACTER', W - 110, 57);
-  ctx.fillText('CODED FR', W - 110, 72);
-
-  // App label
-  ctx.textAlign = 'left';
-  ctx.font = '500 10px system-ui, sans-serif';
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.fillText('TALK NORMIE 2 ME  ·  OTAKU ARC', 32, 46);
-
-  // Repo name — bold manga title
-  ctx.font = '900 28px "Arial Black", system-ui, sans-serif';
-  ctx.fillStyle = '#000';
-  ctx.fillText(repoName, 32, 96);
-
-  // Action line under name
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(32, 106); ctx.lineTo(W - 32, 106); ctx.stroke();
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(32, 112); ctx.lineTo(W - 32, 112); ctx.stroke();
-
-  // Hook text
-  ctx.font = '700 14px system-ui, sans-serif';
-  ctx.fillStyle = '#111';
-  wrapLines(ctx, hook, 32, 148, W - 210, 28);
-
-  // Power level box
-  ctx.fillStyle = '#000';
-  ctx.fillRect(W - 160, H - 90, 136, 54);
-  ctx.font = '700 9px system-ui, sans-serif';
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center';
-  ctx.fillText('POWER LEVEL', W - 92, H - 72);
-  ctx.font = '900 22px "Arial Black", sans-serif';
-  ctx.fillText('9000+', W - 92, H - 50);
-
-  ctx.textAlign = 'left';
-  ctx.font = '10px system-ui, sans-serif';
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 32, H - 30);
-}
-
-// ── NORMIE / FULLNORMIE — clean card ─────────────────────────────────────────
-function drawNormie(ctx: CanvasRenderingContext2D, W: number, H: number, repoName: string, hook: string, full: boolean) {
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = '#e0e0e0';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(1, 1, W - 2, H - 2);
-
-  // Header
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(0, 0, W, 52);
-  ctx.font = '500 12px system-ui, sans-serif';
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'left';
-  ctx.fillText('Talk Normie 2 Me', 24, 34);
-  if (full) {
-    ctx.textAlign = 'right';
-    ctx.font = '500 11px system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillText('Full Normie mode 🧠', W - 24, 34);
-  }
-
-  ctx.textAlign = 'left';
-  ctx.font = '600 22px system-ui, sans-serif';
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillText(repoName, 24, 98);
-
-  ctx.strokeStyle = '#f0f0f0';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(24, 110); ctx.lineTo(W - 24, 110); ctx.stroke();
-
-  ctx.font = full ? '15px system-ui, sans-serif' : '14px system-ui, sans-serif';
-  ctx.fillStyle = '#444';
-  wrapLines(ctx, hook, 24, 144, W - 48, full ? 30 : 26);
-
-  ctx.font = '11px system-ui, monospace';
-  ctx.fillStyle = '#bbb';
-  ctx.fillText('talk-normie-2-me.vercel.app', 24, H - 32);
-}
-
-// ── Main export ──────────────────────────────────────────────────────────────
-export function generateShareCard(
-  mode: PersonalityMode,
-  repoName: string,
-  hook: string
-): Promise<string> {
-  return new Promise((resolve) => {
-    const W = 900, H = 540;
-    const canvas = document.createElement('canvas');
-    canvas.width = W; canvas.height = H;
-    const ctx = canvas.getContext('2d')!;
-
-    switch (mode) {
-      case 'poetry':     drawPoetry(ctx, W, H, repoName, hook); break;
-      case 'emo':        drawEmo(ctx, W, H, repoName, hook); break;
-      case 'bro':        drawBro(ctx, W, H, repoName, hook); break;
-      case 'conspiracy': drawConspiracy(ctx, W, H, repoName, hook); break;
-      case 'flirty':     drawFlirty(ctx, W, H, repoName, hook); break;
-      case 'brainrot':   drawBrainrot(ctx, W, H, repoName, hook); break;
-      case 'sporty':     drawSporty(ctx, W, H, repoName, hook); break;
-      case 'otaku':      drawOtaku(ctx, W, H, repoName, hook); break;
-      case 'fullnormie': drawNormie(ctx, W, H, repoName, hook, true); break;
-      default:           drawNormie(ctx, W, H, repoName, hook, false); break;
+    if (dataUrl) {
+      const link = document.createElement('a');
+      link.download = `tn2m-${result.meta?.name || 'card'}.png`;
+      link.href = dataUrl;
+      link.click();
     }
 
-    resolve(canvas.toDataURL('image/png'));
+    navigator.clipboard.writeText(tweetText).catch(() => {});
+    setTimeout(() => window.open(twitterUrl, '_blank', 'width=600,height=400'), 300);
+
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  }
+
+  return (
+    <button
+      onClick={handleShare}
+      className={dark ? styles.shareBtnDark : styles.shareBtnLight}
+      title="Download card + share on X"
+    >
+      {copied ? '✓ card saved' : '𝕏 share'}
+    </button>
+  );
+}
+
+function PoetryView({ explanation, dark }: { explanation: string; dark: boolean }) {
+  const stanzas = parsePoetryStanzas(explanation);
+  const labels = SECTION_LABELS.poetry;
+
+  return (
+    <div className={dark ? styles.poetryBodyDark : styles.poetryBodyLight}>
+      {stanzas.map((stanza, i) => (
+        <div key={i} className={dark ? styles.poetryStanzaDark : styles.poetryStanzaLight}>
+          <span className={dark ? styles.poetryNumeralDark : styles.poetryNumeralLight}>
+            {labels[i] ?? labels[labels.length - 1]}
+          </span>
+          <p className={dark ? styles.poetryTextDark : styles.poetryTextLight}>{stanza}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function App() {
+  const [url, setUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [error, setError] = useState('');
+  const [repos, setRepos] = useState<Repo[]>([]);
+  const [reposLoading, setReposLoading] = useState(false);
+  const [browseOpen, setBrowseOpen] = useState(false);
+  const [activeRepo, setActiveRepo] = useState('');
+  const [search, setSearch] = useState('');
+  const [dark, setDark] = useState(false);
+  const [useCount, setUseCount] = useState(0);
+  const [showWall, setShowWall] = useState(false);
+  const [mode, setMode] = useState<PersonalityMode>('normie');
+  const cache = useRef<Record<string, any>>({});
+
+  const { address, isConnected } = useAccount();
+
+  const { data: hasAccess } = useReadContract({
+    address: CLAWD_GATE,
+    abi: CLAWD_GATE_ABI,
+    functionName: 'hasAccess',
+    args: address ? [address, 1] : undefined,
+    chainId: 8453,
+    query: { enabled: !!address },
   });
+
+  const isUnlocked = isConnected && Boolean(hasAccess);
+
+  useEffect(() => {
+    const stored = parseInt(localStorage.getItem('tn2m_uses') || '0', 10);
+    setUseCount(stored);
+  }, []);
+
+  useEffect(() => {
+    if (isUnlocked && showWall) setShowWall(false);
+  }, [isUnlocked, showWall]);
+
+  useEffect(() => {
+    if (browseOpen && repos.length === 0) {
+      setReposLoading(true);
+      fetch('/api/repos')
+        .then((r) => r.json())
+        .then((data) => {
+          setRepos(data);
+          setReposLoading(false);
+        })
+        .catch(() => setReposLoading(false));
+    }
+  }, [browseOpen, repos.length]);
+
+  const isJob = (name: string, description?: string) =>
+    name.startsWith('leftclaw-service-job') ||
+    name.startsWith('cv-') ||
+    name.startsWith('job-') ||
+    (description || '').toLowerCase().includes('job ');
+
+  const filteredRepos = repos
+    .filter((r) => !isJob(r.name, r.description))
+    .filter(
+      (r) =>
+        !search ||
+        r.name.toLowerCase().includes(search.toLowerCase()) ||
+        (r.description || '').toLowerCase().includes(search.toLowerCase())
+    );
+
+  function cycleMode() {
+    const idx = MODES.findIndex((m) => m.id === mode);
+    const next = MODES[(idx + 1) % MODES.length];
+    setMode(next.id);
+    setResult(null);
+  }
+
+  async function handleSubmit(repoUrl?: string) {
+    const target = repoUrl || url;
+    if (!target.trim()) return;
+
+    if (!isUnlocked && useCount >= FREE_LIMIT) {
+      setShowWall(true);
+      return;
+    }
+
+    const cacheKey = `${target}__${mode}`;
+    if (cache.current[cacheKey]) {
+      setResult(cache.current[cacheKey]);
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setResult(null);
+
+    if (!isUnlocked) {
+      const newCount = useCount + 1;
+      setUseCount(newCount);
+      localStorage.setItem('tn2m_uses', String(newCount));
+    }
+
+    try {
+      const res = await fetch('/api/explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: target, mode }),
+      });
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      cache.current[cacheKey] = data;
+      setResult(data);
+    } catch (e: any) {
+      setError(e.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const sections =
+    result?.explanation && mode !== 'poetry'
+      ? result.explanation
+          .split('\n')
+          .reduce((acc: string[][], line: string) => {
+            if (line.trim() === '') {
+              if (acc[acc.length - 1]?.length > 0) acc.push([]);
+            } else {
+              if (!acc.length) acc.push([]);
+              acc[acc.length - 1].push(line.trim());
+            }
+            return acc;
+          }, [[]])
+          .filter((s: string[]) => s.length > 0)
+          .map((s: string[]) => stripSectionLabel(s.join(' ')))
+          .filter((s: string) => s.length > 0)
+      : [];
+
+  const currentMode = MODES.find((m) => m.id === mode)!;
+  const labels = SECTION_LABELS[mode];
+  const textStyle = MODE_TEXT_STYLE[mode];
+  const labelStyle = MODE_LABEL_STYLE[mode];
+
+  const thinkingMessages: Record<PersonalityMode, string> = {
+    normie: 'Thinking...',
+    fullnormie: 'Making it super simple...',
+    flirty: 'Sliding into your DMs...',
+    emo: 'Staring into the void...',
+    bro: 'Getting gains on this...',
+    conspiracy: 'Following the threads...',
+    brainrot: 'Cooking fr fr...',
+    sporty: 'Warming up...',
+    otaku: 'Entering the arc...',
+    poetry: 'Dipping the pen...',
+  };
+
+  const getModeResultClass = () => {
+    if (mode === 'poetry') return dark ? styles.resultPoetryDark : styles.resultPoetryLight;
+    if (mode === 'emo') return dark ? styles.resultEmoDark : styles.resultEmoLight;
+    if (mode === 'conspiracy') return dark ? styles.resultConspiracyDark : styles.resultConspiracyLight;
+    if (mode === 'bro') return dark ? styles.resultBroDark : styles.resultBroLight;
+    if (mode === 'sporty') return dark ? styles.resultSportyDark : styles.resultSportyLight;
+    return dark ? styles.resultDark : styles.resultLight;
+  };
+
+  return (
+    <main className={dark ? styles.mainDark : styles.mainLight}>
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <div className={styles.logo}>
+            <div className={dark ? styles.logoIconDark : styles.logoIconLight}>
+              <div className={dark ? styles.bubbleBigDark : styles.bubbleBigLight}>
+                <span className={dark ? styles.dotDark : styles.dotLight} />
+                <span className={dark ? styles.dotDark : styles.dotLight} />
+                <span className={dark ? styles.dotDark : styles.dotLight} />
+              </div>
+              <div className={dark ? styles.bubbleSmallDark : styles.bubbleSmallLight} />
+            </div>
+            <span className={dark ? styles.logoTextDark : styles.logoTextLight}>
+              Talk{' '}
+              <button
+                className={dark ? styles.modeWordDark : styles.modeWordLight}
+                onClick={cycleMode}
+                title={`Switch mode (currently ${currentMode.label})`}
+              >
+                {currentMode.label}
+              </button>{' '}
+              2 Me
+            </span>
+          </div>
+
+          <div className={styles.headerRight}>
+            <button
+              className={dark ? styles.darkToggleDark : styles.darkToggleLight}
+              onClick={() => setDark((d) => !d)}
+              title={dark ? 'Back to normie mode' : 'Warning: less normie ahead'}
+            >
+              {dark ? '☀️' : '🌙'}
+            </button>
+
+            <button
+              className={dark ? styles.browseToggleDark : styles.browseToggleLight}
+              onClick={() => setBrowseOpen((o) => !o)}
+            >
+              <span>{browseOpen ? 'Close' : 'Browse CLAWD repos'}</span>
+              <span>{browseOpen ? '↑' : '↓'}</span>
+            </button>
+          </div>
+        </div>
+
+        <p className={dark ? styles.taglineDark : styles.taglineLight}>
+          {dark
+            ? 'Still plain English, just darker.'
+            : 'Paste any GitHub link. Get a plain English breakdown.'}
+        </p>
+
+        {browseOpen && (
+          <p className={dark ? styles.clawdHintDark : styles.clawdHintLight}>
+            CLAWD repos include context on why each build matters for token holders — not just what it does.
+          </p>
+        )}
+
+        <div className={styles.searchRow}>
+          <input
+            className={dark ? styles.inputDark : styles.inputLight}
+            type="text"
+            placeholder="https://github.com/someone/something"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+          />
+
+          <button
+            className={dark ? styles.buttonDark : styles.buttonLight}
+            onClick={() => handleSubmit()}
+            disabled={loading}
+          >
+            {loading ? 'Thinking...' : 'Explain'}
+          </button>
+        </div>
+
+        {showWall && (
+          <div className={dark ? styles.wallDark : styles.wallLight}>
+            <p className={dark ? styles.wallHeadingDark : styles.wallHeadingLight}>
+              This is where we find out who the real normies are.
+            </p>
+            <p className={dark ? styles.wallTextDark : styles.wallTextLight}>
+              Two explains. That&apos;s the free tier. Grab 10M CLAWD, connect your wallet, and get back to
+              talking normie.
+            </p>
+            <div className={styles.wallConnect}>
+              <ConnectButton />
+            </div>
+          </div>
+        )}
+
+        {browseOpen && !showWall && (
+          <div className={dark ? styles.browsePanelDark : styles.browsePanelLight}>
+            <div className={dark ? styles.browseHeaderDark : styles.browseHeaderLight}>
+              <span className={dark ? styles.browseTitleDark : styles.browseTitleLight}>
+                {reposLoading ? 'Loading...' : `${filteredRepos.length} builds`}
+              </span>
+
+              <input
+                className={dark ? styles.browseSearchDark : styles.browseSearchLight}
+                type="text"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <div className={styles.repoList}>
+              {filteredRepos.map((repo) => (
+                <div
+                  key={repo.name}
+                  className={`${dark ? styles.repoItemDark : styles.repoItemLight} ${
+                    activeRepo === repo.url
+                      ? dark
+                        ? styles.repoItemActiveDark
+                        : styles.repoItemActiveLight
+                      : ''
+                  }`}
+                  onClick={() => {
+                    setActiveRepo(repo.url);
+                    setResult(null);
+                    setError('');
+                    handleSubmit(repo.url);
+                    setBrowseOpen(false);
+                  }}
+                >
+                  <span className={styles.repoDot} style={{ background: LANG_COLORS[repo.language] || '#888' }} />
+                  <div className={styles.repoInfo}>
+                    <div className={dark ? styles.repoNameDark : styles.repoNameLight}>{repo.name}</div>
+                    {repo.description && (
+                      <div className={dark ? styles.repoDescDark : styles.repoDescLight}>{repo.description}</div>
+                    )}
+                  </div>
+                  <span className={dark ? styles.repoDateDark : styles.repoDateLight}>
+                    {new Date(repo.pushedAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {error && <div className={dark ? styles.errorDark : styles.errorLight}>{error}</div>}
+
+        {loading && (
+          <div className={dark ? styles.thinkingDark : styles.thinkingLight}>{thinkingMessages[mode]}</div>
+        )}
+
+        {result && !showWall && (
+          <div className={getModeResultClass()}>
+            <div
+              className={
+                mode === 'poetry'
+                  ? dark
+                    ? styles.resultTopPoetryDark
+                    : styles.resultTopPoetryLight
+                  : dark
+                  ? styles.resultTopDark
+                  : styles.resultTopLight
+              }
+            >
+              <span className={dark ? styles.resultNameDark : styles.resultNameLight}>{result.meta?.name}</span>
+
+              {result.meta?.language && (
+                <span className={dark ? styles.badgeDark : styles.badgeLight}>{result.meta.language}</span>
+              )}
+
+              {mode !== 'normie' && (
+                <span className={dark ? styles.modeBadgeDark : styles.modeBadgeLight}>
+                  {currentMode.emoji} {currentMode.label}
+                </span>
+              )}
+
+              {result.meta?.updatedAt && mode !== 'poetry' && (
+                <span className={dark ? styles.resultDateDark : styles.resultDateLight}>
+                  updated{' '}
+                  {new Date(result.meta.updatedAt).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </span>
+              )}
+
+              <ShareButton result={result} mode={mode} dark={dark} />
+            </div>
+
+            {mode === 'poetry' ? (
+              <PoetryView explanation={result.explanation} dark={dark} />
+            ) : (
+              <div className={styles.resultBody}>
+                {sections.map((section: string, i: number) => (
+                  <div key={i} className={dark ? styles.sectionDark : styles.sectionLight}>
+                    <div className={dark ? styles.sectionLabelDark : styles.sectionLabelLight} style={labelStyle}>
+                      {labels[i] ?? labels[labels.length - 1]}
+                    </div>
+                    <div className={dark ? styles.sectionTextDark : styles.sectionTextLight} style={textStyle}>
+                      {section}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!showWall && !isUnlocked && (
+          <p className={dark ? styles.counterDark : styles.counterLight}>
+            {FREE_LIMIT - useCount > 0
+              ? `${FREE_LIMIT - useCount} free explain${FREE_LIMIT - useCount === 1 ? '' : 's'} remaining`
+              : ''}
+          </p>
+        )}
+      </div>
+    </main>
+  );
 }
-TSEOF
-echo "done"
+
+export default function Home() {
+  return (
+    <Providers>
+      <App />
+    </Providers>
+  );
+}
