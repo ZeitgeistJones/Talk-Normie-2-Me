@@ -16,6 +16,7 @@ type ShareCardPayload = {
   hook: string;
   whatIsIt: string;
   example: string;
+  status: string;
   cta: string;
   url: string;
 };
@@ -73,12 +74,12 @@ function normalizeText(text: string): string {
 
 function ensureTrailingDots(text: string): string {
   const clean = normalizeText(text).replace(/[.!\?…]+$/g, '').trim();
-  return `${clean}....`;
+  return `${clean}...`;
 }
 
-function fitText(text: string, max = 440): string {
+function fitText(text: string, max = 600): string {
   const clean = normalizeText(text);
-  if (clean.length <= max) return ensureTrailingDots(clean);
+  if (clean.length <= max) return clean;
   return ensureTrailingDots(clean.slice(0, max).trim());
 }
 
@@ -89,9 +90,9 @@ function splitSentences(text: string): string[] {
     .filter(Boolean);
 }
 
-function expandPreview(text: string, maxChars = 440, minSentences = 4): string {
+function expandPreview(text: string, maxChars = 600, minSentences = 3): string {
   const sentences = splitSentences(text);
-  if (!sentences.length) return ensureTrailingDots(text);
+  if (!sentences.length) return fitText(text, maxChars);
 
   let out: string[] = [];
   let charCount = 0;
@@ -109,7 +110,11 @@ function expandPreview(text: string, maxChars = 440, minSentences = 4): string {
     return fitText(clean, maxChars);
   }
 
-  return ensureTrailingDots(out.join(' '));
+  // Don't add trailing dots if the text ends naturally
+  const result = out.join(' ');
+  const lastChar = result[result.length - 1];
+  if (['.', '!', '?'].includes(lastChar)) return result;
+  return ensureTrailingDots(result);
 }
 
 function drawPaperTexture(ctx: CanvasRenderingContext2D, W: number, H: number, alpha = 0.03) {
@@ -140,13 +145,13 @@ function drawSection(
   labelColor: string,
   bodyColor: string,
   lineH: number,
-  maxLines = 6
+  maxLines = 5
 ): number {
   ctx.textAlign = 'left';
   ctx.font = labelFont;
   ctx.fillStyle = labelColor;
   ctx.fillText(label, x, y);
-  y += 18;
+  y += 20;
 
   ctx.font = bodyFont;
   ctx.fillStyle = bodyColor;
@@ -306,10 +311,12 @@ function drawOtakuDoodles(ctx: CanvasRenderingContext2D, seed: number, W: number
   ctx.fillText(labels[seed % labels.length], W - 92, H - 50);
 }
 
+// Canvas is 900x600 (taller than before to fit 3 sections)
+const W = 900;
+const H = 600;
+
 function drawNormie(
   ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
   payload: ShareCardPayload,
   full: boolean
 ) {
@@ -348,48 +355,30 @@ function drawNormie(
   ctx.stroke();
 
   let y = 132;
-  y = drawSection(
-    ctx,
-    'WHAT IT IS',
-    expandPreview(payload.whatIsIt, 460, 4),
-    28,
-    y,
-    W - 56,
-    '700 10px system-ui, sans-serif',
-    full ? '15px system-ui, sans-serif' : '14px system-ui, sans-serif',
-    '#9d9386',
-    '#4a433c',
-    22,
-    6
-  );
+  y = drawSection(ctx, 'WHAT IT IS', expandPreview(payload.whatIsIt, 560, 3), 28, y, W - 56,
+    '700 10px system-ui, sans-serif', full ? '16px system-ui, sans-serif' : '15px system-ui, sans-serif',
+    '#9d9386', '#4a433c', 23, 5);
 
-  y += 8;
+  y += 12;
+  y = drawSection(ctx, 'WHO & WHY', expandPreview(payload.example, 560, 3), 28, y, W - 56,
+    '700 10px system-ui, sans-serif', full ? '16px system-ui, sans-serif' : '15px system-ui, sans-serif',
+    '#9d9386', '#2f2a25', 23, 4);
 
-  drawSection(
-    ctx,
-    'EXAMPLE',
-    expandPreview(payload.example, 520, 4),
-    28,
-    y,
-    W - 56,
-    '700 10px system-ui, sans-serif',
-    full ? '15px system-ui, sans-serif' : '14px system-ui, sans-serif',
-    '#9d9386',
-    '#2f2a25',
-    22,
-    6
-  );
+  y += 12;
+  drawSection(ctx, 'STATUS', expandPreview(payload.status, 400, 2), 28, y, W - 56,
+    '700 10px system-ui, sans-serif', full ? '15px system-ui, sans-serif' : '14px system-ui, sans-serif',
+    '#9d9386', '#6a6058', 22, 3);
 
   ctx.font = '600 12px system-ui, sans-serif';
   ctx.fillStyle = '#6f655a';
-  ctx.fillText(payload.cta, 28, H - 52);
+  ctx.fillText(payload.cta, 28, H - 48);
 
   ctx.font = '11px "Courier New", monospace';
   ctx.fillStyle = '#b6ada1';
-  ctx.fillText(payload.url, 28, H - 30);
+  ctx.fillText(payload.url, 28, H - 28);
 }
 
-function drawPoetry(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
+function drawPoetry(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
   ctx.fillStyle = '#f6efe2';
   ctx.fillRect(0, 0, W, H);
   drawPaperTexture(ctx, W, H, 0.04);
@@ -420,37 +409,19 @@ function drawPoetry(ctx: CanvasRenderingContext2D, W: number, H: number, payload
   ctx.stroke();
 
   let y = 132;
-  y = drawSection(
-    ctx,
-    'what it is',
-    expandPreview(payload.whatIsIt, 430, 4),
-    60,
-    y,
-    W - 120,
-    '500 10px "Courier New", monospace',
-    'italic 15px Georgia, serif',
-    'rgba(120,94,60,0.74)',
-    '#332112',
-    23,
-    5
-  );
+  y = drawSection(ctx, 'what it is', expandPreview(payload.whatIsIt, 540, 3), 60, y, W - 120,
+    '500 10px "Courier New", monospace', 'italic 16px Georgia, serif',
+    'rgba(120,94,60,0.74)', '#332112', 24, 4);
 
-  y += 8;
+  y += 12;
+  y = drawSection(ctx, 'a line from the translation', expandPreview(payload.example, 540, 3), 60, y, W - 120,
+    '500 10px "Courier New", monospace', 'italic 16px Georgia, serif',
+    'rgba(120,94,60,0.74)', '#2d1d10', 24, 4);
 
-  drawSection(
-    ctx,
-    'a line from the translation',
-    expandPreview(payload.example, 480, 4),
-    60,
-    y,
-    W - 120,
-    '500 10px "Courier New", monospace',
-    'italic 15px Georgia, serif',
-    'rgba(120,94,60,0.74)',
-    '#2d1d10',
-    23,
-    5
-  );
+  y += 12;
+  drawSection(ctx, 'alive or quiet', expandPreview(payload.status, 380, 2), 60, y, W - 120,
+    '500 10px "Courier New", monospace', 'italic 15px Georgia, serif',
+    'rgba(120,94,60,0.74)', '#4a3020', 23, 3);
 
   ctx.save();
   ctx.globalAlpha = 0.16;
@@ -463,14 +434,14 @@ function drawPoetry(ctx: CanvasRenderingContext2D, W: number, H: number, payload
 
   ctx.font = 'italic 13px Georgia, serif';
   ctx.fillStyle = '#4a301b';
-  ctx.fillText(payload.cta, 60, H - 54);
+  ctx.fillText(payload.cta, 60, H - 48);
 
   ctx.font = '11px "Courier New", monospace';
   ctx.fillStyle = 'rgba(120,94,60,0.76)';
-  ctx.fillText(payload.url, 60, H - 34);
+  ctx.fillText(payload.url, 60, H - 28);
 }
 
-function drawEmo(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
+function drawEmo(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
   const seed = hashString(payload.repoName + payload.mode);
 
   ctx.fillStyle = '#f3f2ef';
@@ -496,8 +467,8 @@ function drawEmo(ctx: CanvasRenderingContext2D, W: number, H: number, payload: S
   ctx.fillStyle = '#e7e7e4';
   ctx.strokeStyle = 'rgba(170,170,164,0.6)';
   ctx.lineWidth = 1;
-  for (let i = 0; i < 7; i++) {
-    const hy = 56 + (i * (H - 90)) / 6;
+  for (let i = 0; i < 8; i++) {
+    const hy = 56 + (i * (H - 90)) / 7;
     ctx.beginPath();
     ctx.arc(22, hy, 10, 0, Math.PI * 2);
     ctx.fill();
@@ -513,50 +484,32 @@ function drawEmo(ctx: CanvasRenderingContext2D, W: number, H: number, payload: S
   ctx.fillText(payload.repoName, 112, 76);
 
   let y = 104;
-  y = drawSection(
-    ctx,
-    'what this is',
-    expandPreview(payload.whatIsIt, 420, 4),
-    112,
-    y,
-    W - 164,
-    '700 10px "Courier New", monospace',
-    '14px "Courier New", monospace',
-    'rgba(92,92,92,0.72)',
-    '#363636',
-    20,
-    6
-  );
+  y = drawSection(ctx, 'what this is', expandPreview(payload.whatIsIt, 540, 3), 112, y, W - 164,
+    '700 10px "Courier New", monospace', '15px "Courier New", monospace',
+    'rgba(92,92,92,0.72)', '#363636', 21, 5);
 
-  y += 8;
+  y += 10;
+  y = drawSection(ctx, 'a page from it', expandPreview(payload.example, 540, 3), 112, y, W - 164,
+    '700 10px "Courier New", monospace', '15px "Courier New", monospace',
+    'rgba(92,92,92,0.72)', '#202020', 21, 4);
 
-  drawSection(
-    ctx,
-    'a page from it',
-    expandPreview(payload.example, 470, 4),
-    112,
-    y,
-    W - 164,
-    '700 10px "Courier New", monospace',
-    '14px "Courier New", monospace',
-    'rgba(92,92,92,0.72)',
-    '#202020',
-    20,
-    6
-  );
+  y += 10;
+  drawSection(ctx, 'still breathing?', expandPreview(payload.status, 380, 2), 112, y, W - 164,
+    '700 10px "Courier New", monospace', '14px "Courier New", monospace',
+    'rgba(92,92,92,0.72)', '#404040', 20, 3);
 
   drawNotebookStars(ctx, seed, W);
 
   ctx.font = '12px "Courier New", monospace';
   ctx.fillStyle = '#555';
-  ctx.fillText(payload.cta, 112, H - 52);
+  ctx.fillText(payload.cta, 112, H - 48);
 
   ctx.font = '10px "Courier New", monospace';
   ctx.fillStyle = 'rgba(118,118,118,0.66)';
-  ctx.fillText(payload.url, 112, H - 32);
+  ctx.fillText(payload.url, 112, H - 28);
 }
 
-function drawBro(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
+function drawBro(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
   ctx.fillStyle = '#0f0f0f';
   ctx.fillRect(0, 0, W, H);
 
@@ -586,48 +539,30 @@ function drawBro(ctx: CanvasRenderingContext2D, W: number, H: number, payload: S
   ctx.fillText(payload.repoName.toUpperCase(), 40, 96);
 
   let y = 122;
-  y = drawSection(
-    ctx,
-    'WHAT IT IS',
-    expandPreview(payload.whatIsIt, 320, 4).toUpperCase(),
-    40,
-    y,
-    W - 80,
-    '900 10px "Arial Black", sans-serif',
-    '700 13px "Arial Black", sans-serif',
-    '#7d7d7d',
-    '#d4d4d4',
-    18,
-    6
-  );
+  y = drawSection(ctx, 'WHAT IT IS', expandPreview(payload.whatIsIt, 480, 3).toUpperCase(), 40, y, W - 80,
+    '900 10px "Arial Black", sans-serif', '700 14px "Arial Black", sans-serif',
+    '#7d7d7d', '#d4d4d4', 19, 5);
 
-  y += 8;
+  y += 10;
+  y = drawSection(ctx, 'WHY IT SLAPS', expandPreview(payload.example, 480, 3).toUpperCase(), 40, y, W - 80,
+    '900 10px "Arial Black", sans-serif', '700 14px "Arial Black", sans-serif',
+    '#7d7d7d', '#ffffff', 19, 4);
 
-  drawSection(
-    ctx,
-    'SAMPLE',
-    expandPreview(payload.example, 380, 4).toUpperCase(),
-    40,
-    y,
-    W - 80,
-    '900 10px "Arial Black", sans-serif',
-    '700 13px "Arial Black", sans-serif',
-    '#7d7d7d',
-    '#ffffff',
-    18,
-    6
-  );
+  y += 10;
+  drawSection(ctx, 'ALIVE OR DEAD', expandPreview(payload.status, 340, 2).toUpperCase(), 40, y, W - 80,
+    '900 10px "Arial Black", sans-serif', '700 13px "Arial Black", sans-serif',
+    '#7d7d7d', '#aaaaaa', 18, 3);
 
   ctx.font = '900 12px "Arial Black", sans-serif';
   ctx.fillStyle = '#d9d9d9';
-  ctx.fillText(payload.cta.toUpperCase(), 40, H - 56);
+  ctx.fillText(payload.cta.toUpperCase(), 40, H - 48);
 
   ctx.font = '11px "Courier New", monospace';
   ctx.fillStyle = 'rgba(150,150,150,0.7)';
-  ctx.fillText(payload.url, 40, H - 36);
+  ctx.fillText(payload.url, 40, H - 28);
 }
 
-function drawConspiracy(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
+function drawConspiracy(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
   const seed = hashString(payload.repoName + payload.mode);
 
   ctx.fillStyle = '#fefdf5';
@@ -681,50 +616,32 @@ function drawConspiracy(ctx: CanvasRenderingContext2D, W: number, H: number, pay
   ctx.stroke();
 
   let y = 122;
-  y = drawSection(
-    ctx,
-    'COVER STORY',
-    expandPreview(payload.whatIsIt, 430, 4),
-    40,
-    y,
-    W - 80,
-    '700 10px "Courier New", monospace',
-    '13px "Courier New", monospace',
-    '#7a7a72',
-    '#1a1a1a',
-    20,
-    6
-  );
+  y = drawSection(ctx, 'COVER STORY', expandPreview(payload.whatIsIt, 540, 3), 40, y, W - 80,
+    '700 10px "Courier New", monospace', '14px "Courier New", monospace',
+    '#7a7a72', '#1a1a1a', 21, 5);
 
-  y += 8;
+  y += 10;
+  y = drawSection(ctx, 'EXHIBIT A', expandPreview(payload.example, 540, 3), 40, y, W - 80,
+    '700 10px "Courier New", monospace', '14px "Courier New", monospace',
+    '#7a7a72', '#1a1a1a', 21, 4);
 
-  drawSection(
-    ctx,
-    'EXHIBIT A',
-    expandPreview(payload.example, 500, 4),
-    40,
-    y,
-    W - 80,
-    '700 10px "Courier New", monospace',
-    '13px "Courier New", monospace',
-    '#7a7a72',
-    '#1a1a1a',
-    20,
-    6
-  );
+  y += 10;
+  drawSection(ctx, 'STILL ACTIVE?', expandPreview(payload.status, 380, 2), 40, y, W - 80,
+    '700 10px "Courier New", monospace', '13px "Courier New", monospace',
+    '#7a7a72', '#3a3a30', 20, 3);
 
   drawConspiracyDoodles(ctx, seed, W, H);
 
   ctx.font = '11px "Courier New", monospace';
   ctx.fillStyle = '#5a5a50';
-  ctx.fillText(payload.cta, 40, H - 58);
+  ctx.fillText(payload.cta, 40, H - 48);
 
   ctx.font = '10px "Courier New", monospace';
   ctx.fillStyle = 'rgba(120,120,100,0.7)';
-  ctx.fillText(payload.url, 40, H - 40);
+  ctx.fillText(payload.url, 40, H - 28);
 }
 
-function drawFlirty(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
+function drawFlirty(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
   const seed = hashString(payload.repoName + payload.mode);
 
   ctx.fillStyle = '#fff8f8';
@@ -762,51 +679,33 @@ function drawFlirty(ctx: CanvasRenderingContext2D, W: number, H: number, payload
   ctx.stroke();
 
   let y = 126;
-  y = drawSection(
-    ctx,
-    'what it is',
-    expandPreview(payload.whatIsIt, 450, 4),
-    50,
-    y,
-    W - 112,
-    'italic 11px Georgia, serif',
-    'italic 15px Georgia, serif',
-    'rgba(180,100,120,0.72)',
-    '#3a1522',
-    21,
-    6
-  );
+  y = drawSection(ctx, 'what it is', expandPreview(payload.whatIsIt, 540, 3), 50, y, W - 112,
+    'italic 11px Georgia, serif', 'italic 16px Georgia, serif',
+    'rgba(180,100,120,0.72)', '#3a1522', 22, 5);
 
-  y += 8;
+  y += 10;
+  y = drawSection(ctx, 'a little taste', expandPreview(payload.example, 540, 3), 50, y, W - 112,
+    'italic 11px Georgia, serif', 'italic 16px Georgia, serif',
+    'rgba(180,100,120,0.72)', '#2d1020', 22, 4);
 
-  drawSection(
-    ctx,
-    'a little taste',
-    expandPreview(payload.example, 520, 4),
-    50,
-    y,
-    W - 112,
-    'italic 11px Georgia, serif',
-    'italic 15px Georgia, serif',
-    'rgba(180,100,120,0.72)',
-    '#2d1020',
-    21,
-    6
-  );
+  y += 10;
+  drawSection(ctx, 'seeing anyone?', expandPreview(payload.status, 380, 2), 50, y, W - 112,
+    'italic 11px Georgia, serif', 'italic 15px Georgia, serif',
+    'rgba(180,100,120,0.72)', '#5a2535', 21, 3);
 
   drawHeartDoodles(ctx, seed, W, H);
 
   ctx.textAlign = 'left';
   ctx.font = 'italic 12px Georgia, serif';
   ctx.fillStyle = '#8a5062';
-  ctx.fillText(payload.cta, 50, H - 56);
+  ctx.fillText(payload.cta, 50, H - 48);
 
   ctx.font = 'italic 11px Georgia, serif';
   ctx.fillStyle = 'rgba(180,100,120,0.6)';
-  ctx.fillText(payload.url, 50, H - 38);
+  ctx.fillText(payload.url, 50, H - 28);
 }
 
-function drawBrainrot(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
+function drawBrainrot(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
   const seed = hashString(payload.repoName + payload.mode);
 
   ctx.fillStyle = '#fff';
@@ -841,50 +740,32 @@ function drawBrainrot(ctx: CanvasRenderingContext2D, W: number, H: number, paylo
   ctx.fillText(payload.repoName, 24, 96);
 
   let y = 122;
-  y = drawSection(
-    ctx,
-    'THE APP',
-    expandPreview(payload.whatIsIt, 420, 4),
-    24,
-    y,
-    W - 48,
-    '900 10px system-ui, sans-serif',
-    '15px system-ui, sans-serif',
-    '#666',
-    '#111',
-    20,
-    6
-  );
+  y = drawSection(ctx, 'THE LORE', expandPreview(payload.whatIsIt, 480, 3), 24, y, W - 48,
+    '900 10px system-ui, sans-serif', '15px system-ui, sans-serif',
+    '#666', '#111', 21, 5);
 
-  y += 8;
+  y += 10;
+  y = drawSection(ctx, 'WHY IT BUSSIN', expandPreview(payload.example, 480, 3), 24, y, W - 48,
+    '900 10px system-ui, sans-serif', '15px system-ui, sans-serif',
+    '#666', '#000', 21, 4);
 
-  drawSection(
-    ctx,
-    'LIVE REACTION',
-    expandPreview(payload.example, 470, 4),
-    24,
-    y,
-    W - 48,
-    '900 10px system-ui, sans-serif',
-    '15px system-ui, sans-serif',
-    '#666',
-    '#000',
-    20,
-    6
-  );
+  y += 10;
+  drawSection(ctx, 'STILL ALIVE FR?', expandPreview(payload.status, 340, 2), 24, y, W - 48,
+    '900 10px system-ui, sans-serif', '14px system-ui, sans-serif',
+    '#666', '#333', 20, 3);
 
   drawBrainrotDoodles(ctx, seed, W, H);
 
   ctx.font = '700 12px system-ui, sans-serif';
   ctx.fillStyle = '#444';
-  ctx.fillText(payload.cta, 24, H - 52);
+  ctx.fillText(payload.cta, 24, H - 48);
 
   ctx.font = '11px system-ui, monospace';
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.fillText(payload.url, 24, H - 32);
+  ctx.fillText(payload.url, 24, H - 28);
 }
 
-function drawSporty(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
+function drawSporty(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
   const seed = hashString(payload.repoName + payload.mode);
 
   ctx.fillStyle = '#f8f8f8';
@@ -918,56 +799,38 @@ function drawSporty(ctx: CanvasRenderingContext2D, W: number, H: number, payload
   ctx.stroke();
 
   let y = 138;
-  y = drawSection(
-    ctx,
-    'SCOUTING REPORT',
-    expandPreview(payload.whatIsIt, 360, 4).toUpperCase(),
-    28,
-    y,
-    W - 56,
-    '900 10px "Arial Black", sans-serif',
-    '800 13px "Arial Black", sans-serif',
-    '#666',
-    '#222',
-    18,
-    6
-  );
+  y = drawSection(ctx, 'SCOUTING REPORT', expandPreview(payload.whatIsIt, 440, 3).toUpperCase(), 28, y, W - 56,
+    '900 10px "Arial Black", sans-serif', '800 14px "Arial Black", sans-serif',
+    '#666', '#222', 19, 5);
 
-  y += 8;
+  y += 10;
+  y = drawSection(ctx, 'TAPE SAMPLE', expandPreview(payload.example, 440, 3).toUpperCase(), 28, y, W - 56,
+    '900 10px "Arial Black", sans-serif', '800 14px "Arial Black", sans-serif',
+    '#666', '#111', 19, 4);
 
-  drawSection(
-    ctx,
-    'TAPE SAMPLE',
-    expandPreview(payload.example, 420, 4).toUpperCase(),
-    28,
-    y,
-    W - 56,
-    '900 10px "Arial Black", sans-serif',
-    '800 13px "Arial Black", sans-serif',
-    '#666',
-    '#111',
-    18,
-    6
-  );
+  y += 10;
+  drawSection(ctx, 'GAME STATUS', expandPreview(payload.status, 320, 2).toUpperCase(), 28, y, W - 56,
+    '900 10px "Arial Black", sans-serif', '800 13px "Arial Black", sans-serif',
+    '#666', '#444', 18, 3);
 
   drawSportyDoodles(ctx, seed, W, H);
 
   ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(28, H - 76, 168, 38);
+  ctx.fillRect(28, H - 72, 168, 38);
   ctx.font = '700 10px "Arial Black", sans-serif';
   ctx.fillStyle = '#fff';
-  ctx.fillText('FILM ROOM  •  NO JARGON  •  BUILT', 36, H - 52);
+  ctx.fillText('FILM ROOM  •  NO JARGON  •  BUILT', 36, H - 48);
 
   ctx.font = '700 11px "Arial Black", sans-serif';
   ctx.fillStyle = '#444';
-  ctx.fillText(payload.cta.toUpperCase(), 214, H - 52);
+  ctx.fillText(payload.cta.toUpperCase(), 214, H - 48);
 
   ctx.font = '10px "Courier New", monospace';
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.fillText(payload.url, 28, H - 28);
+  ctx.fillText(payload.url, 28, H - 24);
 }
 
-function drawOtaku(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
+function drawOtaku(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
   const seed = hashString(payload.repoName + payload.mode);
 
   ctx.fillStyle = '#fff';
@@ -1034,54 +897,34 @@ function drawOtaku(ctx: CanvasRenderingContext2D, W: number, H: number, payload:
   ctx.stroke();
 
   let y = 132;
-  y = drawSection(
-    ctx,
-    'LORE DROP',
-    expandPreview(payload.whatIsIt, 390, 4),
-    32,
-    y,
-    W - 220,
-    '700 10px system-ui, sans-serif',
-    '700 14px system-ui, sans-serif',
-    '#666',
-    '#111',
-    19,
-    6
-  );
+  y = drawSection(ctx, 'LORE DROP', expandPreview(payload.whatIsIt, 460, 3), 32, y, W - 220,
+    '700 10px system-ui, sans-serif', '700 15px system-ui, sans-serif',
+    '#666', '#111', 20, 5);
 
-  y += 8;
+  y += 10;
+  y = drawSection(ctx, 'ARC PREVIEW', expandPreview(payload.example, 460, 3), 32, y, W - 220,
+    '700 10px system-ui, sans-serif', '700 15px system-ui, sans-serif',
+    '#666', '#000', 20, 4);
 
-  drawSection(
-    ctx,
-    'ARC PREVIEW',
-    expandPreview(payload.example, 460, 4),
-    32,
-    y,
-    W - 220,
-    '700 10px system-ui, sans-serif',
-    '700 14px system-ui, sans-serif',
-    '#666',
-    '#000',
-    19,
-    6
-  );
+  y += 10;
+  drawSection(ctx, 'ARC STATUS', expandPreview(payload.status, 340, 2), 32, y, W - 220,
+    '700 10px system-ui, sans-serif', '700 14px system-ui, sans-serif',
+    '#666', '#333', 19, 3);
 
   drawOtakuDoodles(ctx, seed, W, H);
 
   ctx.textAlign = 'left';
   ctx.font = '700 11px system-ui, sans-serif';
   ctx.fillStyle = '#333';
-  ctx.fillText(payload.cta, 32, H - 52);
+  ctx.fillText(payload.cta, 32, H - 48);
 
   ctx.font = '10px system-ui, sans-serif';
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.fillText(payload.url, 32, H - 30);
+  ctx.fillText(payload.url, 32, H - 28);
 }
 
 export function generateShareCard(payload: ShareCardPayload): Promise<string> {
   return new Promise((resolve) => {
-    const W = 900;
-    const H = 540;
     const canvas = document.createElement('canvas');
     canvas.width = W;
     canvas.height = H;
@@ -1094,34 +937,34 @@ export function generateShareCard(payload: ShareCardPayload): Promise<string> {
 
     switch (payload.mode) {
       case 'poetry':
-        drawPoetry(ctx, W, H, payload);
+        drawPoetry(ctx, payload);
         break;
       case 'emo':
-        drawEmo(ctx, W, H, payload);
+        drawEmo(ctx, payload);
         break;
       case 'bro':
-        drawBro(ctx, W, H, payload);
+        drawBro(ctx, payload);
         break;
       case 'conspiracy':
-        drawConspiracy(ctx, W, H, payload);
+        drawConspiracy(ctx, payload);
         break;
       case 'flirty':
-        drawFlirty(ctx, W, H, payload);
+        drawFlirty(ctx, payload);
         break;
       case 'brainrot':
-        drawBrainrot(ctx, W, H, payload);
+        drawBrainrot(ctx, payload);
         break;
       case 'sporty':
-        drawSporty(ctx, W, H, payload);
+        drawSporty(ctx, payload);
         break;
       case 'otaku':
-        drawOtaku(ctx, W, H, payload);
+        drawOtaku(ctx, payload);
         break;
       case 'fullnormie':
-        drawNormie(ctx, W, H, payload, true);
+        drawNormie(ctx, payload, true);
         break;
       default:
-        drawNormie(ctx, W, H, payload, false);
+        drawNormie(ctx, payload, false);
         break;
     }
 
