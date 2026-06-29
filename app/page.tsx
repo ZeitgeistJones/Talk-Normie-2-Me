@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount, useReadContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Providers } from './providers';
@@ -21,31 +21,51 @@ const FREE_LIMIT = 2;
 type PersonalityMode = 'normie' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku' | 'poetry';
 
 const MODES: { id: PersonalityMode; label: string; emoji: string }[] = [
-  { id: 'normie',      label: 'Normie',      emoji: '💬' },
-  { id: 'fullnormie',  label: 'Full Normie', emoji: '🧠' },
-  { id: 'bro',         label: 'Bro',         emoji: '💪' },
-  { id: 'flirty',      label: 'Flirty',      emoji: '😘' },
-  { id: 'emo',         label: 'Emo',         emoji: '🖤' },
-  { id: 'brainrot',    label: 'Brainrot',    emoji: '🫠' },
-  { id: 'sporty',      label: 'Sporty',      emoji: '🏆' },
-  { id: 'otaku',       label: 'Otaku',       emoji: '⚡' },
-  { id: 'conspiracy',  label: 'Conspiracy',  emoji: '🕵️' },
-  { id: 'poetry',      label: 'Poetry',      emoji: '🎭' },
+  { id: 'normie',     label: 'Normie',     emoji: '💬' },
+  { id: 'fullnormie', label: 'Full Normie',emoji: '🧠' },
+  { id: 'bro',        label: 'Bro',        emoji: '💪' },
+  { id: 'flirty',     label: 'Flirty',     emoji: '😘' },
+  { id: 'emo',        label: 'Emo',        emoji: '🖤' },
+  { id: 'brainrot',   label: 'Brainrot',   emoji: '🫠' },
+  { id: 'sporty',     label: 'Sporty',     emoji: '🏆' },
+  { id: 'otaku',      label: 'Otaku',      emoji: '⚡' },
+  { id: 'conspiracy', label: 'Conspiracy', emoji: '🕵️' },
+  { id: 'poetry',     label: 'Poetry',     emoji: '🪶' },
 ];
+
+// Per-mode font/style overrides applied to section text
+const MODE_TEXT_STYLE: Record<PersonalityMode, React.CSSProperties> = {
+  normie:     { fontFamily: 'system-ui, sans-serif' },
+  fullnormie: { fontFamily: 'system-ui, sans-serif', fontSize: '15px', lineHeight: '1.8', letterSpacing: '0.01em' },
+  bro:        { fontFamily: '"Arial Black", "Impact", system-ui, sans-serif', fontWeight: 700, letterSpacing: '-0.01em' },
+  flirty:     { fontFamily: 'Georgia, "Palatino Linotype", serif', fontStyle: 'italic', lineHeight: '1.8' },
+  emo:        { fontFamily: '"Courier New", Courier, monospace', fontSize: '13px', lineHeight: '1.9', letterSpacing: '0.02em' },
+  brainrot:   { fontFamily: 'system-ui, sans-serif', letterSpacing: '0.03em', lineHeight: '1.75' },
+  sporty:     { fontFamily: '"Arial Black", Impact, system-ui, sans-serif', fontWeight: 800, lineHeight: '1.5', letterSpacing: '0.02em', textTransform: 'uppercase' as const, fontSize: '12px' },
+  otaku:      { fontFamily: 'system-ui, sans-serif', lineHeight: '1.9', letterSpacing: '0.04em' },
+  conspiracy: { fontFamily: '"Courier New", Courier, monospace', fontSize: '12.5px', lineHeight: '1.85', letterSpacing: '0.03em' },
+  poetry:     { fontFamily: 'Georgia, "Times New Roman", serif', fontStyle: 'italic', fontSize: '14px', lineHeight: '2', letterSpacing: '0.01em', whiteSpace: 'pre-wrap' as const },
+};
+
+// Per-mode section label style
+const MODE_LABEL_STYLE: Record<PersonalityMode, React.CSSProperties> = {
+  normie:     {},
+  fullnormie: { fontSize: '11px' },
+  bro:        { fontFamily: '"Arial Black", Impact, sans-serif', letterSpacing: '0.15em', fontSize: '9px' },
+  flirty:     { fontFamily: 'Georgia, serif', fontStyle: 'italic', textTransform: 'none' as const, letterSpacing: '0.02em', fontSize: '11px' },
+  emo:        { fontFamily: '"Courier New", monospace', letterSpacing: '0.12em' },
+  brainrot:   { letterSpacing: '0.1em' },
+  sporty:     { fontFamily: '"Arial Black", Impact, sans-serif', letterSpacing: '0.2em', fontSize: '9px' },
+  otaku:      { letterSpacing: '0.18em' },
+  conspiracy: { fontFamily: '"Courier New", monospace', letterSpacing: '0.15em', fontSize: '9px' },
+  poetry:     { fontFamily: 'Georgia, serif', textTransform: 'none' as const, fontStyle: 'italic', letterSpacing: '0.01em', fontSize: '11px' },
+};
 
 function stripSectionLabel(text: string): string {
   return text
     .replace(/^\*?\*?Section\s+\d+[:\s][^\n]*\*?\*?\s*/i, '')
     .replace(/^\*\*[^*]+\*\*\s*/, '')
     .trim();
-}
-
-function splitCommitLines(text: string): string[] {
-  const withBreaks = text.replace(/\s*(COMMIT\s*\d+:)/gi, '\n$1').trim();
-  return withBreaks
-    .split('\n')
-    .map(line => line.replace(/^COMMIT\s*\d+:\s*/i, '').trim())
-    .filter(line => line.length > 0);
 }
 
 type Repo = {
@@ -60,11 +80,54 @@ type Repo = {
 const LANG_COLORS: Record<string, string> = {
   TypeScript: '#3b82f6',
   JavaScript: '#f59e0b',
-  Python: '#f59e0b',
-  Shell: '#10b981',
-  Solidity: '#8b5cf6',
-  HTML: '#ef4444',
+  Python:     '#f59e0b',
+  Shell:      '#10b981',
+  Solidity:   '#8b5cf6',
+  HTML:       '#ef4444',
 };
+
+const SECTION_LABELS: Record<PersonalityMode, string[]> = {
+  normie:     ['What it is', 'Why it matters', 'Status', 'Recent commits', 'Why it stopped'],
+  fullnormie: ['What it is', 'Why it matters', 'Is it alive?', 'What changed', 'Why it stopped'],
+  bro:        ['THE REP 💪', 'WHY IT SLAPS', 'ALIVE OR DEAD', 'RECENT PLAYS', 'WHY IT QUIT'],
+  flirty:     ['what it is 💋', 'why you want it', 'seeing anyone?', 'recently active', 'why it ghosted'],
+  emo:        ['what this is', 'why it hurts', 'still breathing?', 'the last words', 'where it went'],
+  brainrot:   ['the lore', 'why it bussin', 'still alive fr?', 'recent glazing', 'why it flopped'],
+  sporty:     ['THE PLAYBOOK', 'WHY IT WINS', 'GAME STATUS', 'RECENT PLAYS', 'FINAL WHISTLE'],
+  otaku:      ['the lore', 'power level', 'arc status', 'episode recap', 'why it ended'],
+  conspiracy: ['the cover story', 'the real reason', 'still active?', 'the trail', 'why it went dark'],
+  poetry:     ['the thing itself', 'why it matters', 'pulse', 'three moments', 'silence'],
+};
+
+function ShareButton({ result, mode, dark }: { result: any; mode: PersonalityMode; dark: boolean }) {
+  const [copied, setCopied] = useState(false);
+
+  function buildTweet() {
+    const hook = result.shareHook || `just explained ${result.meta?.name} on Talk Normie 2 Me`;
+    const appUrl = 'https://talk-normie-2-me.vercel.app';
+    const repoUrl = result.repoUrl || '';
+    return `${hook}\n\n${appUrl}\n\n(repo: ${repoUrl})`;
+  }
+
+  function handleShare() {
+    const tweet = buildTweet();
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweet)}`;
+    navigator.clipboard.writeText(tweet).catch(() => {});
+    window.open(twitterUrl, '_blank', 'width=600,height=400');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  }
+
+  return (
+    <button
+      onClick={handleShare}
+      className={dark ? styles.shareBtnDark : styles.shareBtnLight}
+      title="Share on X"
+    >
+      {copied ? '✓ copied' : '𝕏 share'}
+    </button>
+  );
+}
 
 function App() {
   const [url, setUrl] = useState('');
@@ -168,11 +231,11 @@ function App() {
     finally { setLoading(false); }
   }
 
-  const rawSections = result?.explanation
+  const sections = result?.explanation
     ? result.explanation
-  .split('\n')
-  .reduce((acc: string[][], line: string) => {
-    if (line.trim() === '' || line.trim() === '---') {
+        .split('\n')
+        .reduce((acc: string[][], line: string) => {
+          if (line.trim() === '') {
             if (acc[acc.length - 1]?.length > 0) acc.push([]);
           } else {
             if (!acc.length) acc.push([]);
@@ -181,15 +244,14 @@ function App() {
           return acc;
         }, [[]])
         .filter((s: string[]) => s.length > 0)
-        .map((s: string[]) => stripSectionLabel(s.join(' ')))
+        .map((s: string[]) => stripSectionLabel(s.join(mode === 'poetry' ? '\n' : ' ')))
         .filter((s: string) => s.length > 0)
     : [];
 
-  const sections = rawSections.length > 3
-    ? [...rawSections.slice(0, 3), rawSections.slice(3).join(' ')]
-    : rawSections;
-
   const currentMode = MODES.find(m => m.id === mode)!;
+  const labels = SECTION_LABELS[mode];
+  const textStyle = MODE_TEXT_STYLE[mode];
+  const labelStyle = MODE_LABEL_STYLE[mode];
 
   const thinkingMessages: Record<PersonalityMode, string> = {
     normie:     'Thinking...',
@@ -201,7 +263,7 @@ function App() {
     brainrot:   'Cooking fr fr...',
     sporty:     'Warming up...',
     otaku:      'Entering the arc...',
-    poetry:     'Finding the rhyme...',
+    poetry:     'Dipping the pen...',
   };
 
   return (
@@ -343,26 +405,25 @@ function App() {
                   updated {new Date(result.meta.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
               )}
+              <ShareButton result={result} mode={mode} dark={dark} />
             </div>
             <div className={styles.resultBody}>
-              {sections.map((section: string, i: number) => {
-                const isCommitsSection = i === 3;
-                const label = i === 0 ? 'What it is' : i === 1 ? 'Why it matters' : i === 2 ? 'Status' : 'Recent commits';
-                return (
-                  <div key={i} className={dark ? styles.sectionDark : styles.sectionLight}>
-                    <div className={dark ? styles.sectionLabelDark : styles.sectionLabelLight}>{label}</div>
-                    {isCommitsSection ? (
-                      splitCommitLines(section).map((line, j) => (
-                        <div key={j} className={dark ? styles.sectionTextDark : styles.sectionTextLight} style={{ marginBottom: 8 }}>
-                          {line}
-                        </div>
-                      ))
-                    ) : (
-                      <div className={dark ? styles.sectionTextDark : styles.sectionTextLight}>{section}</div>
-                    )}
+              {sections.map((section: string, i: number) => (
+                <div key={i} className={dark ? styles.sectionDark : styles.sectionLight}>
+                  <div
+                    className={dark ? styles.sectionLabelDark : styles.sectionLabelLight}
+                    style={labelStyle}
+                  >
+                    {labels[i] ?? labels[labels.length - 1]}
                   </div>
-                );
-              })}
+                  <div
+                    className={dark ? styles.sectionTextDark : styles.sectionTextLight}
+                    style={textStyle}
+                  >
+                    {section}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
