@@ -56,20 +56,47 @@ function wrapLines(
   x: number,
   y: number,
   maxW: number,
-  lineH: number
+  lineH: number,
+  maxLines?: number
 ): number {
   const rawLines = text.split('\n');
+  let linesUsed = 0;
+
   for (const rawLine of rawLines) {
+    if (maxLines && linesUsed >= maxLines) break;
+
     if (rawLine.trim() === '') {
-      y += lineH * 0.6;
+      y += lineH * 0.55;
       continue;
     }
-    y = wrapText(ctx, rawLine, x, y, maxW, lineH);
+
+    const words = rawLine.split(' ');
+    let line = '';
+
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > maxW && line) {
+        ctx.fillText(line, x, y);
+        y += lineH;
+        linesUsed += 1;
+        if (maxLines && linesUsed >= maxLines) return y;
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+
+    if (line) {
+      ctx.fillText(line, x, y);
+      y += lineH;
+      linesUsed += 1;
+    }
   }
+
   return y;
 }
 
-function fitText(text: string, max = 220): string {
+function fitText(text: string, max = 340): string {
   const clean = String(text || '').replace(/\s+/g, ' ').trim();
   if (clean.length <= max) return clean;
   return `${clean.slice(0, max - 3).trim()}...`;
@@ -96,17 +123,18 @@ function drawSection(
   bodyFont: string,
   labelColor: string,
   bodyColor: string,
-  lineH: number
+  lineH: number,
+  maxLines = 4
 ): number {
   ctx.font = labelFont;
   ctx.fillStyle = labelColor;
   ctx.textAlign = 'left';
   ctx.fillText(label, x, y);
-  y += 20;
+  y += 18;
 
   ctx.font = bodyFont;
   ctx.fillStyle = bodyColor;
-  return wrapLines(ctx, text, x, y, maxW, lineH);
+  return wrapLines(ctx, text, x, y, maxW, lineH, maxLines);
 }
 
 function drawNormie(
@@ -150,12 +178,12 @@ function drawNormie(
   ctx.lineTo(W - 28, 108);
   ctx.stroke();
 
-  let y = 136;
+  let y = 132;
 
   y = drawSection(
     ctx,
     'WHAT IT IS',
-    fitText(payload.whatIsIt, 150),
+    fitText(payload.whatIsIt, 230),
     28,
     y,
     W - 56,
@@ -163,15 +191,16 @@ function drawNormie(
     full ? '15px system-ui, sans-serif' : '14px system-ui, sans-serif',
     '#9d9386',
     '#4a433c',
-    full ? 28 : 26
+    24,
+    4
   );
 
-  y += 12;
+  y += 8;
 
   y = drawSection(
     ctx,
     'EXAMPLE',
-    fitText(payload.example, 190),
+    fitText(payload.example, 290),
     28,
     y,
     W - 56,
@@ -179,7 +208,8 @@ function drawNormie(
     full ? '15px system-ui, sans-serif' : '14px system-ui, sans-serif',
     '#9d9386',
     '#2f2a25',
-    full ? 28 : 26
+    24,
+    5
   );
 
   ctx.font = '600 12px system-ui, sans-serif';
@@ -255,12 +285,12 @@ function drawPoetry(
   ctx.lineTo(W - 60, 104);
   ctx.stroke();
 
-  let y = 134;
+  let y = 132;
 
   y = drawSection(
     ctx,
     'what it is',
-    fitText(payload.whatIsIt, 150),
+    fitText(payload.whatIsIt, 220),
     60,
     y,
     W - 120,
@@ -268,7 +298,8 @@ function drawPoetry(
     'italic 15px Georgia, serif',
     'rgba(120,94,60,0.74)',
     '#332112',
-    27
+    25,
+    4
   );
 
   y += 10;
@@ -276,7 +307,7 @@ function drawPoetry(
   y = drawSection(
     ctx,
     'a line from the translation',
-    fitText(payload.example, 180),
+    fitText(payload.example, 270),
     60,
     y,
     W - 120,
@@ -284,7 +315,8 @@ function drawPoetry(
     'italic 16px Georgia, serif',
     'rgba(120,94,60,0.74)',
     '#2d1d10',
-    30
+    27,
+    5
   );
 
   ctx.save();
@@ -361,12 +393,12 @@ function drawEmo(
   ctx.fillStyle = '#1a1a1a';
   ctx.fillText(payload.repoName, 112, 76);
 
-  let y = 108;
+  let y = 104;
 
   y = drawSection(
     ctx,
     'what this is',
-    fitText(payload.whatIsIt, 130),
+    fitText(payload.whatIsIt, 210),
     112,
     y,
     W - 164,
@@ -374,7 +406,8 @@ function drawEmo(
     '14px "Courier New", monospace',
     'rgba(92,92,92,0.72)',
     '#363636',
-    24
+    22,
+    4
   );
 
   y += 8;
@@ -382,7 +415,7 @@ function drawEmo(
   y = drawSection(
     ctx,
     'a page from it',
-    fitText(payload.example, 165),
+    fitText(payload.example, 250),
     112,
     y,
     W - 164,
@@ -390,7 +423,8 @@ function drawEmo(
     '14px "Courier New", monospace',
     'rgba(92,92,92,0.72)',
     '#202020',
-    24
+    22,
+    5
   );
 
   ctx.save();
@@ -444,12 +478,12 @@ function drawBro(
   ctx.font = '900 26px "Arial Black", Impact, sans-serif';
   ctx.fillText(payload.repoName.toUpperCase(), 40, 96);
 
-  let y = 126;
+  let y = 122;
 
   y = drawSection(
     ctx,
     'WHAT IT IS',
-    fitText(payload.whatIsIt, 110).toUpperCase(),
+    fitText(payload.whatIsIt, 170).toUpperCase(),
     40,
     y,
     W - 80,
@@ -457,7 +491,8 @@ function drawBro(
     '700 13px "Arial Black", sans-serif',
     '#7d7d7d',
     '#d4d4d4',
-    22
+    20,
+    4
   );
 
   y += 8;
@@ -465,7 +500,7 @@ function drawBro(
   y = drawSection(
     ctx,
     'SAMPLE',
-    fitText(payload.example, 150).toUpperCase(),
+    fitText(payload.example, 230).toUpperCase(),
     40,
     y,
     W - 80,
@@ -473,7 +508,8 @@ function drawBro(
     '700 13px "Arial Black", sans-serif',
     '#7d7d7d',
     '#ffffff',
-    22
+    20,
+    5
   );
 
   ctx.font = '900 12px "Arial Black", sans-serif';
@@ -541,12 +577,12 @@ function drawConspiracy(
   ctx.lineTo(W - 40, 96);
   ctx.stroke();
 
-  let y = 126;
+  let y = 122;
 
   y = drawSection(
     ctx,
     'COVER STORY',
-    fitText(payload.whatIsIt, 120),
+    fitText(payload.whatIsIt, 210),
     40,
     y,
     W - 80,
@@ -554,7 +590,8 @@ function drawConspiracy(
     '13px "Courier New", monospace',
     '#7a7a72',
     '#1a1a1a',
-    24
+    22,
+    4
   );
 
   y += 8;
@@ -562,7 +599,7 @@ function drawConspiracy(
   y = drawSection(
     ctx,
     'EXHIBIT A',
-    fitText(payload.example, 150),
+    fitText(payload.example, 250),
     40,
     y,
     W - 80,
@@ -570,7 +607,8 @@ function drawConspiracy(
     '13px "Courier New", monospace',
     '#7a7a72',
     '#1a1a1a',
-    24
+    22,
+    5
   );
 
   ctx.font = '11px "Courier New", monospace';
@@ -634,12 +672,12 @@ function drawFlirty(
   ctx.lineTo(W - 50, 100);
   ctx.stroke();
 
-  let y = 130;
+  let y = 126;
 
   y = drawSection(
     ctx,
     'what it is',
-    fitText(payload.whatIsIt, 130),
+    fitText(payload.whatIsIt, 230),
     50,
     y,
     W - 110,
@@ -647,7 +685,8 @@ function drawFlirty(
     'italic 15px Georgia, serif',
     'rgba(180,100,120,0.72)',
     '#3a1522',
-    26
+    23,
+    4
   );
 
   y += 8;
@@ -655,7 +694,7 @@ function drawFlirty(
   y = drawSection(
     ctx,
     'a little taste',
-    fitText(payload.example, 165),
+    fitText(payload.example, 290),
     50,
     y,
     W - 110,
@@ -663,7 +702,8 @@ function drawFlirty(
     'italic 15px Georgia, serif',
     'rgba(180,100,120,0.72)',
     '#2d1020',
-    28
+    25,
+    5
   );
 
   ctx.save();
@@ -728,12 +768,12 @@ function drawBrainrot(
   ctx.fillStyle = '#000';
   ctx.fillText(payload.repoName, 24, 96);
 
-  let y = 126;
+  let y = 122;
 
   y = drawSection(
     ctx,
     'THE APP',
-    fitText(payload.whatIsIt, 120),
+    fitText(payload.whatIsIt, 190),
     24,
     y,
     W - 48,
@@ -741,7 +781,8 @@ function drawBrainrot(
     '15px system-ui, sans-serif',
     '#666',
     '#111',
-    24
+    22,
+    4
   );
 
   y += 8;
@@ -749,7 +790,7 @@ function drawBrainrot(
   y = drawSection(
     ctx,
     'LIVE REACTION',
-    fitText(payload.example, 160),
+    fitText(payload.example, 250),
     24,
     y,
     W - 48,
@@ -757,7 +798,8 @@ function drawBrainrot(
     '15px system-ui, sans-serif',
     '#666',
     '#000',
-    26
+    24,
+    5
   );
 
   ctx.save();
@@ -826,12 +868,12 @@ function drawSporty(
   ctx.lineTo(W - 28, 114);
   ctx.stroke();
 
-  let y = 142;
+  let y = 138;
 
   y = drawSection(
     ctx,
     'SCOUTING REPORT',
-    fitText(payload.whatIsIt, 110).toUpperCase(),
+    fitText(payload.whatIsIt, 170).toUpperCase(),
     28,
     y,
     W - 56,
@@ -839,7 +881,8 @@ function drawSporty(
     '800 13px "Arial Black", sans-serif',
     '#666',
     '#222',
-    22
+    20,
+    4
   );
 
   y += 8;
@@ -847,7 +890,7 @@ function drawSporty(
   y = drawSection(
     ctx,
     'TAPE SAMPLE',
-    fitText(payload.example, 145).toUpperCase(),
+    fitText(payload.example, 230).toUpperCase(),
     28,
     y,
     W - 56,
@@ -855,7 +898,8 @@ function drawSporty(
     '800 13px "Arial Black", sans-serif',
     '#666',
     '#111',
-    22
+    20,
+    5
   );
 
   ctx.fillStyle = '#1a1a1a';
@@ -942,12 +986,12 @@ function drawOtaku(
   ctx.lineTo(W - 32, 108);
   ctx.stroke();
 
-  let y = 136;
+  let y = 132;
 
   y = drawSection(
     ctx,
     'LORE DROP',
-    fitText(payload.whatIsIt, 115),
+    fitText(payload.whatIsIt, 220),
     32,
     y,
     W - 220,
@@ -955,7 +999,8 @@ function drawOtaku(
     '700 14px system-ui, sans-serif',
     '#666',
     '#111',
-    24
+    21,
+    4
   );
 
   y += 6;
@@ -963,7 +1008,7 @@ function drawOtaku(
   y = drawSection(
     ctx,
     'ARC PREVIEW',
-    fitText(payload.example, 145),
+    fitText(payload.example, 270),
     32,
     y,
     W - 220,
@@ -971,7 +1016,8 @@ function drawOtaku(
     '700 14px system-ui, sans-serif',
     '#666',
     '#000',
-    24
+    21,
+    5
   );
 
   ctx.fillStyle = '#000';
