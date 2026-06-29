@@ -20,36 +20,6 @@ type ShareCardPayload = {
   url: string;
 };
 
-function wrapText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxW: number,
-  lineH: number
-): number {
-  const words = text.split(' ');
-  let line = '';
-
-  for (const word of words) {
-    const test = line ? `${line} ${word}` : word;
-    if (ctx.measureText(test).width > maxW && line) {
-      ctx.fillText(line, x, y);
-      line = word;
-      y += lineH;
-    } else {
-      line = test;
-    }
-  }
-
-  if (line) {
-    ctx.fillText(line, x, y);
-    y += lineH;
-  }
-
-  return y;
-}
-
 function wrapLines(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -59,14 +29,14 @@ function wrapLines(
   lineH: number,
   maxLines?: number
 ): number {
-  const rawLines = text.split('\n');
+  const rawLines = String(text || '').split('\n');
   let linesUsed = 0;
 
   for (const rawLine of rawLines) {
     if (maxLines && linesUsed >= maxLines) break;
 
     if (rawLine.trim() === '') {
-      y += lineH * 0.55;
+      y += lineH * 0.5;
       continue;
     }
 
@@ -90,26 +60,72 @@ function wrapLines(
       ctx.fillText(line, x, y);
       y += lineH;
       linesUsed += 1;
+      if (maxLines && linesUsed >= maxLines) return y;
     }
   }
 
   return y;
 }
 
-function fitText(text: string, max = 340): string {
-  const clean = String(text || '').replace(/\s+/g, ' ').trim();
-  if (clean.length <= max) return clean;
-  return `${clean.slice(0, max - 3).trim()}...`;
+function normalizeText(text: string): string {
+  return String(text || '').replace(/\s+/g, ' ').trim();
 }
 
-function drawPaperTexture(ctx: CanvasRenderingContext2D, W: number, H: number, alpha = 0.035) {
-  for (let i = 0; i < 1400; i++) {
+function ensureTrailingDots(text: string): string {
+  const clean = normalizeText(text).replace(/[.!\?…]+$/g, '').trim();
+  return `${clean}....`;
+}
+
+function fitText(text: string, max = 440): string {
+  const clean = normalizeText(text);
+  if (clean.length <= max) return ensureTrailingDots(clean);
+  return ensureTrailingDots(clean.slice(0, max).trim());
+}
+
+function splitSentences(text: string): string[] {
+  return normalizeText(text)
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function expandPreview(text: string, maxChars = 440, minSentences = 4): string {
+  const sentences = splitSentences(text);
+  if (!sentences.length) return ensureTrailingDots(text);
+
+  let out: string[] = [];
+  let charCount = 0;
+
+  for (const sentence of sentences) {
+    const next = out.length ? `${out.join(' ')} ${sentence}` : sentence;
+    if (next.length > maxChars && out.length >= minSentences) break;
+    out.push(sentence);
+    charCount = next.length;
+    if (charCount >= maxChars && out.length >= minSentences) break;
+  }
+
+  if (out.length < minSentences) {
+    const clean = normalizeText(text);
+    return fitText(clean, maxChars);
+  }
+
+  return ensureTrailingDots(out.join(' '));
+}
+
+function drawPaperTexture(ctx: CanvasRenderingContext2D, W: number, H: number, alpha = 0.03) {
+  for (let i = 0; i < 1500; i++) {
     const x = Math.random() * W;
     const y = Math.random() * H;
     const a = Math.random() * alpha;
     ctx.fillStyle = `rgba(40,30,20,${a})`;
     ctx.fillRect(x, y, 1, 1);
   }
+}
+
+function hashString(str: string): number {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h << 5) - h + str.charCodeAt(i);
+  return Math.abs(h);
 }
 
 function drawSection(
@@ -124,17 +140,170 @@ function drawSection(
   labelColor: string,
   bodyColor: string,
   lineH: number,
-  maxLines = 4
+  maxLines = 6
 ): number {
+  ctx.textAlign = 'left';
   ctx.font = labelFont;
   ctx.fillStyle = labelColor;
-  ctx.textAlign = 'left';
   ctx.fillText(label, x, y);
   y += 18;
 
   ctx.font = bodyFont;
   ctx.fillStyle = bodyColor;
   return wrapLines(ctx, text, x, y, maxW, lineH, maxLines);
+}
+
+function drawSparkles(ctx: CanvasRenderingContext2D, points: Array<[number, number]>, color: string) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.font = '15px Georgia, serif';
+  ctx.textAlign = 'center';
+  for (const [x, y] of points) ctx.fillText('✦', x, y);
+  ctx.restore();
+}
+
+function drawHeartDoodles(ctx: CanvasRenderingContext2D, seed: number, W: number, H: number) {
+  const variants = [
+    [
+      [W - 92, H - 82, '💋', 50, 0.14],
+      [W - 150, 64, '♡', 18, 0.22],
+      [W - 110, 138, '♥', 14, 0.12],
+    ],
+    [
+      [W - 100, H - 78, '💋', 52, -0.16],
+      [78, H - 62, '♡', 20, -0.12],
+      [W - 72, 58, '✦', 16, 0],
+    ],
+    [
+      [W - 92, H - 82, '💋', 48, 0.08],
+      [W - 170, 84, '♡', 18, 0.16],
+      [W - 134, 106, '♡', 14, -0.18],
+    ],
+  ];
+  const set = variants[seed % variants.length];
+  for (const [x, y, glyph, size, rot] of set as any) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    ctx.globalAlpha = glyph === '💋' ? 0.18 : 0.22;
+    ctx.font = `${size}px Georgia, serif`;
+    ctx.fillStyle = glyph === '💋' ? '#d83f67' : '#c7748a';
+    ctx.textAlign = 'center';
+    ctx.fillText(glyph, 0, 0);
+    ctx.restore();
+  }
+}
+
+function drawNotebookStars(ctx: CanvasRenderingContext2D, seed: number, W: number) {
+  const variants = [
+    [[W - 82, 58], [W - 58, 92], [W - 72, 132]],
+    [[W - 70, 54], [W - 46, 86], [W - 90, 118]],
+    [[W - 60, 64], [W - 86, 96], [W - 52, 126]],
+  ];
+  const pts = variants[seed % variants.length] as Array<[number, number]>;
+  ctx.save();
+  ctx.globalAlpha = 0.14;
+  ctx.font = '16px serif';
+  ctx.fillStyle = '#444';
+  for (const [x, y] of pts) ctx.fillText('✦', x, y);
+  ctx.restore();
+}
+
+function drawConspiracyDoodles(ctx: CanvasRenderingContext2D, seed: number, W: number, H: number) {
+  ctx.save();
+  ctx.globalAlpha = 0.08;
+  ctx.strokeStyle = '#b94949';
+  ctx.lineWidth = 2;
+  const variants = [
+    [[W - 210, 170, W - 120, 126], [140, 150, 240, 210]],
+    [[W - 250, 160, W - 126, 118], [120, 190, 230, 136]],
+    [[W - 220, 210, W - 126, 120], [160, 150, 278, 224]],
+  ];
+  const lines = variants[seed % variants.length] as number[][];
+  for (const [x1, y1, x2, y2] of lines) {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.08;
+  ctx.strokeStyle = '#7f7f73';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(W - 130, 118, 28, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawBrainrotDoodles(ctx: CanvasRenderingContext2D, seed: number, W: number, H: number) {
+  const stickers = ['GOATED', 'NO CAP', 'FR FR'];
+  const word = stickers[seed % stickers.length];
+
+  ctx.save();
+  ctx.translate(W - 92, H - 96);
+  ctx.rotate([-0.3, -0.18, -0.38][seed % 3]);
+  ctx.fillStyle = '#ffe500';
+  ctx.beginPath();
+  for (let i = 0; i < 12; i++) {
+    const angle = (i * Math.PI) / 6;
+    const r = i % 2 === 0 ? 42 : 30;
+    if (i === 0) ctx.moveTo(Math.cos(angle) * r, Math.sin(angle) * r);
+    else ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.textAlign = 'center';
+  ctx.font = '900 9px system-ui, sans-serif';
+  ctx.fillStyle = '#000';
+  ctx.fillText(word, 0, -4);
+  ctx.fillText('FR FR', 0, 9);
+  ctx.restore();
+
+  const emojis = ['🫠', '✨', '😭'];
+  ctx.save();
+  ctx.globalAlpha = 0.08;
+  ctx.font = '110px serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#000';
+  ctx.fillText(emojis[seed % emojis.length], W / 2, H / 2 + 40);
+  ctx.restore();
+}
+
+function drawSportyDoodles(ctx: CanvasRenderingContext2D, seed: number, W: number, H: number) {
+  const balls = ['🏀', '🏈', '⚽'];
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.font = '46px serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#111';
+  ctx.fillText(balls[seed % balls.length], W - 92, H - 58);
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+  ctx.lineWidth = 1;
+  const y = [150, 188, 226][seed % 3];
+  ctx.beginPath();
+  ctx.moveTo(28, y);
+  ctx.lineTo(164, y - 18);
+  ctx.lineTo(280, y + 8);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawOtakuDoodles(ctx: CanvasRenderingContext2D, seed: number, W: number, H: number) {
+  const labels = ['9000+', 'S-RANK', 'BOSS FIGHT'];
+  ctx.fillStyle = '#000';
+  ctx.fillRect(W - 160, H - 90, 136, 54);
+  ctx.font = '700 9px system-ui, sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.fillText('POWER LEVEL', W - 92, H - 72);
+  ctx.font = '900 22px "Arial Black", sans-serif';
+  ctx.fillText(labels[seed % labels.length], W - 92, H - 50);
 }
 
 function drawNormie(
@@ -146,7 +315,7 @@ function drawNormie(
 ) {
   ctx.fillStyle = '#fffdf9';
   ctx.fillRect(0, 0, W, H);
-  drawPaperTexture(ctx, W, H, 0.02);
+  drawPaperTexture(ctx, W, H, 0.018);
 
   ctx.strokeStyle = '#e7e1d8';
   ctx.lineWidth = 1;
@@ -179,11 +348,10 @@ function drawNormie(
   ctx.stroke();
 
   let y = 132;
-
   y = drawSection(
     ctx,
     'WHAT IT IS',
-    fitText(payload.whatIsIt, 230),
+    expandPreview(payload.whatIsIt, 460, 4),
     28,
     y,
     W - 56,
@@ -191,16 +359,16 @@ function drawNormie(
     full ? '15px system-ui, sans-serif' : '14px system-ui, sans-serif',
     '#9d9386',
     '#4a433c',
-    24,
-    4
+    22,
+    6
   );
 
   y += 8;
 
-  y = drawSection(
+  drawSection(
     ctx,
     'EXAMPLE',
-    fitText(payload.example, 290),
+    expandPreview(payload.example, 520, 4),
     28,
     y,
     W - 56,
@@ -208,8 +376,8 @@ function drawNormie(
     full ? '15px system-ui, sans-serif' : '14px system-ui, sans-serif',
     '#9d9386',
     '#2f2a25',
-    24,
-    5
+    22,
+    6
   );
 
   ctx.font = '600 12px system-ui, sans-serif';
@@ -221,21 +389,10 @@ function drawNormie(
   ctx.fillText(payload.url, 28, H - 30);
 }
 
-function drawPoetry(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  payload: ShareCardPayload
-) {
+function drawPoetry(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
   ctx.fillStyle = '#f6efe2';
   ctx.fillRect(0, 0, W, H);
-  drawPaperTexture(ctx, W, H, 0.045);
-
-  const grad = ctx.createLinearGradient(0, 0, W, H);
-  grad.addColorStop(0, 'rgba(255,255,255,0.12)');
-  grad.addColorStop(1, 'rgba(90,60,20,0.04)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+  drawPaperTexture(ctx, W, H, 0.04);
 
   for (let y = 72; y < H - 42; y += 30) {
     ctx.strokeStyle = 'rgba(146,121,80,0.12)';
@@ -245,29 +402,6 @@ function drawPoetry(
     ctx.lineTo(W - 52, y);
     ctx.stroke();
   }
-
-  ctx.fillStyle = 'rgba(90,60,35,0.05)';
-  ctx.fillRect(0, 0, 10, H);
-
-  ctx.save();
-  ctx.translate(W, 0);
-  ctx.beginPath();
-  ctx.moveTo(-58, 0);
-  ctx.lineTo(0, 0);
-  ctx.lineTo(0, 58);
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(0,0,0,0.06)';
-  ctx.fill();
-  ctx.restore();
-
-  ctx.save();
-  ctx.strokeStyle = 'rgba(80,50,20,0.06)';
-  ctx.lineWidth = 12;
-  ctx.beginPath();
-  ctx.moveTo(30, 24);
-  ctx.quadraticCurveTo(W / 2, 6, W - 24, 28);
-  ctx.stroke();
-  ctx.restore();
 
   ctx.font = '500 11px "Courier New", monospace';
   ctx.fillStyle = 'rgba(120,94,60,0.82)';
@@ -286,11 +420,10 @@ function drawPoetry(
   ctx.stroke();
 
   let y = 132;
-
   y = drawSection(
     ctx,
     'what it is',
-    fitText(payload.whatIsIt, 220),
+    expandPreview(payload.whatIsIt, 430, 4),
     60,
     y,
     W - 120,
@@ -298,37 +431,26 @@ function drawPoetry(
     'italic 15px Georgia, serif',
     'rgba(120,94,60,0.74)',
     '#332112',
-    25,
-    4
+    23,
+    5
   );
 
-  y += 10;
+  y += 8;
 
-  y = drawSection(
+  drawSection(
     ctx,
     'a line from the translation',
-    fitText(payload.example, 270),
+    expandPreview(payload.example, 480, 4),
     60,
     y,
     W - 120,
     '500 10px "Courier New", monospace',
-    'italic 16px Georgia, serif',
+    'italic 15px Georgia, serif',
     'rgba(120,94,60,0.74)',
     '#2d1d10',
-    27,
+    23,
     5
   );
-
-  ctx.save();
-  ctx.globalAlpha = 0.12;
-  ctx.fillStyle = '#2b1608';
-  ctx.beginPath();
-  ctx.ellipse(W - 104, H - 66, 30, 5, -0.3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(W - 88, H - 58, 14, 3, 0.35, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
 
   ctx.save();
   ctx.globalAlpha = 0.16;
@@ -348,15 +470,12 @@ function drawPoetry(
   ctx.fillText(payload.url, 60, H - 34);
 }
 
-function drawEmo(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  payload: ShareCardPayload
-) {
+function drawEmo(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
+  const seed = hashString(payload.repoName + payload.mode);
+
   ctx.fillStyle = '#f3f2ef';
   ctx.fillRect(0, 0, W, H);
-  drawPaperTexture(ctx, W, H, 0.03);
+  drawPaperTexture(ctx, W, H, 0.028);
 
   ctx.strokeStyle = 'rgba(182,182,176,0.4)';
   ctx.lineWidth = 1;
@@ -394,11 +513,10 @@ function drawEmo(
   ctx.fillText(payload.repoName, 112, 76);
 
   let y = 104;
-
   y = drawSection(
     ctx,
     'what this is',
-    fitText(payload.whatIsIt, 210),
+    expandPreview(payload.whatIsIt, 420, 4),
     112,
     y,
     W - 164,
@@ -406,16 +524,16 @@ function drawEmo(
     '14px "Courier New", monospace',
     'rgba(92,92,92,0.72)',
     '#363636',
-    22,
-    4
+    20,
+    6
   );
 
   y += 8;
 
-  y = drawSection(
+  drawSection(
     ctx,
     'a page from it',
-    fitText(payload.example, 250),
+    expandPreview(payload.example, 470, 4),
     112,
     y,
     W - 164,
@@ -423,17 +541,11 @@ function drawEmo(
     '14px "Courier New", monospace',
     'rgba(92,92,92,0.72)',
     '#202020',
-    22,
-    5
+    20,
+    6
   );
 
-  ctx.save();
-  ctx.globalAlpha = 0.14;
-  ctx.font = '16px serif';
-  ctx.fillText('✦', W - 82, 60);
-  ctx.fillText('✦', W - 56, 92);
-  ctx.fillText('†', W - 72, 132);
-  ctx.restore();
+  drawNotebookStars(ctx, seed, W);
 
   ctx.font = '12px "Courier New", monospace';
   ctx.fillStyle = '#555';
@@ -444,12 +556,7 @@ function drawEmo(
   ctx.fillText(payload.url, 112, H - 32);
 }
 
-function drawBro(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  payload: ShareCardPayload
-) {
+function drawBro(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
   ctx.fillStyle = '#0f0f0f';
   ctx.fillRect(0, 0, W, H);
 
@@ -479,11 +586,10 @@ function drawBro(
   ctx.fillText(payload.repoName.toUpperCase(), 40, 96);
 
   let y = 122;
-
   y = drawSection(
     ctx,
     'WHAT IT IS',
-    fitText(payload.whatIsIt, 170).toUpperCase(),
+    expandPreview(payload.whatIsIt, 320, 4).toUpperCase(),
     40,
     y,
     W - 80,
@@ -491,16 +597,16 @@ function drawBro(
     '700 13px "Arial Black", sans-serif',
     '#7d7d7d',
     '#d4d4d4',
-    20,
-    4
+    18,
+    6
   );
 
   y += 8;
 
-  y = drawSection(
+  drawSection(
     ctx,
     'SAMPLE',
-    fitText(payload.example, 230).toUpperCase(),
+    expandPreview(payload.example, 380, 4).toUpperCase(),
     40,
     y,
     W - 80,
@@ -508,8 +614,8 @@ function drawBro(
     '700 13px "Arial Black", sans-serif',
     '#7d7d7d',
     '#ffffff',
-    20,
-    5
+    18,
+    6
   );
 
   ctx.font = '900 12px "Arial Black", sans-serif';
@@ -521,15 +627,12 @@ function drawBro(
   ctx.fillText(payload.url, 40, H - 36);
 }
 
-function drawConspiracy(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  payload: ShareCardPayload
-) {
+function drawConspiracy(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
+  const seed = hashString(payload.repoName + payload.mode);
+
   ctx.fillStyle = '#fefdf5';
   ctx.fillRect(0, 0, W, H);
-  drawPaperTexture(ctx, W, H, 0.025);
+  drawPaperTexture(ctx, W, H, 0.024);
 
   ctx.strokeStyle = '#bbb';
   ctx.lineWidth = 1;
@@ -578,11 +681,10 @@ function drawConspiracy(
   ctx.stroke();
 
   let y = 122;
-
   y = drawSection(
     ctx,
     'COVER STORY',
-    fitText(payload.whatIsIt, 210),
+    expandPreview(payload.whatIsIt, 430, 4),
     40,
     y,
     W - 80,
@@ -590,16 +692,16 @@ function drawConspiracy(
     '13px "Courier New", monospace',
     '#7a7a72',
     '#1a1a1a',
-    22,
-    4
+    20,
+    6
   );
 
   y += 8;
 
-  y = drawSection(
+  drawSection(
     ctx,
     'EXHIBIT A',
-    fitText(payload.example, 250),
+    expandPreview(payload.example, 500, 4),
     40,
     y,
     W - 80,
@@ -607,9 +709,11 @@ function drawConspiracy(
     '13px "Courier New", monospace',
     '#7a7a72',
     '#1a1a1a',
-    22,
-    5
+    20,
+    6
   );
+
+  drawConspiracyDoodles(ctx, seed, W, H);
 
   ctx.font = '11px "Courier New", monospace';
   ctx.fillStyle = '#5a5a50';
@@ -620,17 +724,14 @@ function drawConspiracy(
   ctx.fillText(payload.url, 40, H - 40);
 }
 
-function drawFlirty(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  payload: ShareCardPayload
-) {
+function drawFlirty(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
+  const seed = hashString(payload.repoName + payload.mode);
+
   ctx.fillStyle = '#fff8f8';
   ctx.fillRect(0, 0, W, H);
-  drawPaperTexture(ctx, W, H, 0.018);
+  drawPaperTexture(ctx, W, H, 0.016);
 
-  const vg = ctx.createRadialGradient(W / 2, H / 2, 200, W / 2, H / 2, 600);
+  const vg = ctx.createRadialGradient(W / 2, H / 2, 200, W / 2, H / 2, 620);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
   vg.addColorStop(1, 'rgba(180,80,100,0.06)');
   ctx.fillStyle = vg;
@@ -642,19 +743,7 @@ function drawFlirty(
   ctx.strokeStyle = 'rgba(200,130,145,0.25)';
   ctx.strokeRect(24, 24, W - 48, H - 48);
 
-  const corners = [
-    [36, 36],
-    [W - 36, 36],
-    [36, H - 36],
-    [W - 36, H - 36],
-  ] as const;
-
-  ctx.font = '16px Georgia, serif';
-  ctx.fillStyle = 'rgba(200,130,145,0.3)';
-  ctx.textAlign = 'center';
-  for (const [cx, cy] of corners) {
-    ctx.fillText('✦', cx, cy + 6);
-  }
+  drawSparkles(ctx, [[36, 40], [W - 36, 40], [36, H - 24], [W - 36, H - 24]], 'rgba(200,130,145,0.3)');
 
   ctx.textAlign = 'left';
   ctx.font = 'italic 11px Georgia, serif';
@@ -673,48 +762,39 @@ function drawFlirty(
   ctx.stroke();
 
   let y = 126;
-
   y = drawSection(
     ctx,
     'what it is',
-    fitText(payload.whatIsIt, 230),
+    expandPreview(payload.whatIsIt, 450, 4),
     50,
     y,
-    W - 110,
+    W - 112,
     'italic 11px Georgia, serif',
     'italic 15px Georgia, serif',
     'rgba(180,100,120,0.72)',
     '#3a1522',
-    23,
-    4
+    21,
+    6
   );
 
   y += 8;
 
-  y = drawSection(
+  drawSection(
     ctx,
     'a little taste',
-    fitText(payload.example, 290),
+    expandPreview(payload.example, 520, 4),
     50,
     y,
-    W - 110,
+    W - 112,
     'italic 11px Georgia, serif',
     'italic 15px Georgia, serif',
     'rgba(180,100,120,0.72)',
     '#2d1020',
-    25,
-    5
+    21,
+    6
   );
 
-  ctx.save();
-  ctx.globalAlpha = 0.16;
-  ctx.translate(W - 92, H - 84);
-  ctx.rotate(0.15);
-  ctx.font = '52px serif';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#cc3355';
-  ctx.fillText('💋', 0, 0);
-  ctx.restore();
+  drawHeartDoodles(ctx, seed, W, H);
 
   ctx.textAlign = 'left';
   ctx.font = 'italic 12px Georgia, serif';
@@ -726,12 +806,9 @@ function drawFlirty(
   ctx.fillText(payload.url, 50, H - 38);
 }
 
-function drawBrainrot(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  payload: ShareCardPayload
-) {
+function drawBrainrot(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
+  const seed = hashString(payload.repoName + payload.mode);
+
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, W, H);
 
@@ -758,22 +835,16 @@ function drawBrainrot(
   ctx.textAlign = 'left';
   ctx.fillText('TALK NORMIE 2 ME  🫠  BRAINROT EDITION  FR FR', 24, 33);
 
-  ctx.font = '140px serif';
-  ctx.fillStyle = 'rgba(0,0,0,0.03)';
-  ctx.textAlign = 'center';
-  ctx.fillText('🫠', W / 2, H / 2 + 50);
-
   ctx.textAlign = 'left';
   ctx.font = '900 26px system-ui, "Arial Black", sans-serif';
   ctx.fillStyle = '#000';
   ctx.fillText(payload.repoName, 24, 96);
 
   let y = 122;
-
   y = drawSection(
     ctx,
     'THE APP',
-    fitText(payload.whatIsIt, 190),
+    expandPreview(payload.whatIsIt, 420, 4),
     24,
     y,
     W - 48,
@@ -781,16 +852,16 @@ function drawBrainrot(
     '15px system-ui, sans-serif',
     '#666',
     '#111',
-    22,
-    4
+    20,
+    6
   );
 
   y += 8;
 
-  y = drawSection(
+  drawSection(
     ctx,
     'LIVE REACTION',
-    fitText(payload.example, 250),
+    expandPreview(payload.example, 470, 4),
     24,
     y,
     W - 48,
@@ -798,31 +869,12 @@ function drawBrainrot(
     '15px system-ui, sans-serif',
     '#666',
     '#000',
-    24,
-    5
+    20,
+    6
   );
 
-  ctx.save();
-  ctx.translate(W - 100, H - 100);
-  ctx.rotate(-0.3);
-  ctx.fillStyle = '#ffe500';
-  ctx.beginPath();
-  for (let i = 0; i < 12; i++) {
-    const angle = (i * Math.PI) / 6;
-    const r = i % 2 === 0 ? 42 : 30;
-    if (i === 0) ctx.moveTo(Math.cos(angle) * r, Math.sin(angle) * r);
-    else ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
-  }
-  ctx.closePath();
-  ctx.fill();
-  ctx.font = '900 9px system-ui, sans-serif';
-  ctx.fillStyle = '#000';
-  ctx.textAlign = 'center';
-  ctx.fillText('GOATED', 0, -3);
-  ctx.fillText('FR FR', 0, 9);
-  ctx.restore();
+  drawBrainrotDoodles(ctx, seed, W, H);
 
-  ctx.textAlign = 'left';
   ctx.font = '700 12px system-ui, sans-serif';
   ctx.fillStyle = '#444';
   ctx.fillText(payload.cta, 24, H - 52);
@@ -832,12 +884,9 @@ function drawBrainrot(
   ctx.fillText(payload.url, 24, H - 32);
 }
 
-function drawSporty(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  payload: ShareCardPayload
-) {
+function drawSporty(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
+  const seed = hashString(payload.repoName + payload.mode);
+
   ctx.fillStyle = '#f8f8f8';
   ctx.fillRect(0, 0, W, H);
 
@@ -869,11 +918,10 @@ function drawSporty(
   ctx.stroke();
 
   let y = 138;
-
   y = drawSection(
     ctx,
     'SCOUTING REPORT',
-    fitText(payload.whatIsIt, 170).toUpperCase(),
+    expandPreview(payload.whatIsIt, 360, 4).toUpperCase(),
     28,
     y,
     W - 56,
@@ -881,16 +929,16 @@ function drawSporty(
     '800 13px "Arial Black", sans-serif',
     '#666',
     '#222',
-    20,
-    4
+    18,
+    6
   );
 
   y += 8;
 
-  y = drawSection(
+  drawSection(
     ctx,
     'TAPE SAMPLE',
-    fitText(payload.example, 230).toUpperCase(),
+    expandPreview(payload.example, 420, 4).toUpperCase(),
     28,
     y,
     W - 56,
@@ -898,31 +946,30 @@ function drawSporty(
     '800 13px "Arial Black", sans-serif',
     '#666',
     '#111',
-    20,
-    5
+    18,
+    6
   );
 
+  drawSportyDoodles(ctx, seed, W, H);
+
   ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(28, H - 76, 142, 38);
+  ctx.fillRect(28, H - 76, 168, 38);
   ctx.font = '700 10px "Arial Black", sans-serif';
   ctx.fillStyle = '#fff';
-  ctx.fillText('W  ·  NO JARGON  ·  BUILT', 36, H - 52);
+  ctx.fillText('FILM ROOM  •  NO JARGON  •  BUILT', 36, H - 52);
 
   ctx.font = '700 11px "Arial Black", sans-serif';
   ctx.fillStyle = '#444';
-  ctx.fillText(payload.cta.toUpperCase(), 188, H - 52);
+  ctx.fillText(payload.cta.toUpperCase(), 214, H - 52);
 
   ctx.font = '10px "Courier New", monospace';
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.fillText(payload.url, 28, H - 28);
 }
 
-function drawOtaku(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  payload: ShareCardPayload
-) {
+function drawOtaku(ctx: CanvasRenderingContext2D, W: number, H: number, payload: ShareCardPayload) {
+  const seed = hashString(payload.repoName + payload.mode);
+
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, W, H);
 
@@ -987,11 +1034,10 @@ function drawOtaku(
   ctx.stroke();
 
   let y = 132;
-
   y = drawSection(
     ctx,
     'LORE DROP',
-    fitText(payload.whatIsIt, 220),
+    expandPreview(payload.whatIsIt, 390, 4),
     32,
     y,
     W - 220,
@@ -999,16 +1045,16 @@ function drawOtaku(
     '700 14px system-ui, sans-serif',
     '#666',
     '#111',
-    21,
-    4
+    19,
+    6
   );
 
-  y += 6;
+  y += 8;
 
-  y = drawSection(
+  drawSection(
     ctx,
     'ARC PREVIEW',
-    fitText(payload.example, 270),
+    expandPreview(payload.example, 460, 4),
     32,
     y,
     W - 220,
@@ -1016,18 +1062,11 @@ function drawOtaku(
     '700 14px system-ui, sans-serif',
     '#666',
     '#000',
-    21,
-    5
+    19,
+    6
   );
 
-  ctx.fillStyle = '#000';
-  ctx.fillRect(W - 160, H - 90, 136, 54);
-  ctx.font = '700 9px system-ui, sans-serif';
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center';
-  ctx.fillText('POWER LEVEL', W - 92, H - 72);
-  ctx.font = '900 22px "Arial Black", sans-serif';
-  ctx.fillText('9000+', W - 92, H - 50);
+  drawOtakuDoodles(ctx, seed, W, H);
 
   ctx.textAlign = 'left';
   ctx.font = '700 11px system-ui, sans-serif';
