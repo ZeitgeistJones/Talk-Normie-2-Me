@@ -10,6 +10,16 @@ type PersonalityMode =
   | 'otaku'
   | 'poetry';
 
+type ShareCardPayload = {
+  repoName: string;
+  mode: PersonalityMode;
+  hook: string;
+  whatIsIt: string;
+  example: string;
+  cta: string;
+  url: string;
+};
+
 function wrapText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -59,6 +69,12 @@ function wrapLines(
   return y;
 }
 
+function fitText(text: string, max = 220): string {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (clean.length <= max) return clean;
+  return `${clean.slice(0, max - 3).trim()}...`;
+}
+
 function drawPaperTexture(ctx: CanvasRenderingContext2D, W: number, H: number, alpha = 0.035) {
   for (let i = 0; i < 1400; i++) {
     const x = Math.random() * W;
@@ -69,12 +85,35 @@ function drawPaperTexture(ctx: CanvasRenderingContext2D, W: number, H: number, a
   }
 }
 
+function drawSection(
+  ctx: CanvasRenderingContext2D,
+  label: string,
+  text: string,
+  x: number,
+  y: number,
+  maxW: number,
+  labelFont: string,
+  bodyFont: string,
+  labelColor: string,
+  bodyColor: string,
+  lineH: number
+): number {
+  ctx.font = labelFont;
+  ctx.fillStyle = labelColor;
+  ctx.textAlign = 'left';
+  ctx.fillText(label, x, y);
+  y += 20;
+
+  ctx.font = bodyFont;
+  ctx.fillStyle = bodyColor;
+  return wrapLines(ctx, text, x, y, maxW, lineH);
+}
+
 function drawNormie(
   ctx: CanvasRenderingContext2D,
   W: number,
   H: number,
-  repoName: string,
-  hook: string,
+  payload: ShareCardPayload,
   full: boolean
 ) {
   ctx.fillStyle = '#fffdf9';
@@ -96,36 +135,67 @@ function drawNormie(
   if (full) {
     ctx.textAlign = 'right';
     ctx.font = '500 11px system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillStyle = 'rgba(255,255,255,0.72)';
     ctx.fillText('Full Normie 🧠', W - 26, 35);
   }
 
   ctx.textAlign = 'left';
   ctx.font = '600 24px system-ui, sans-serif';
   ctx.fillStyle = '#1c1a17';
-  ctx.fillText(repoName, 28, 102);
+  ctx.fillText(payload.repoName, 28, 94);
 
   ctx.strokeStyle = '#ece6dc';
   ctx.beginPath();
-  ctx.moveTo(28, 116);
-  ctx.lineTo(W - 28, 116);
+  ctx.moveTo(28, 108);
+  ctx.lineTo(W - 28, 108);
   ctx.stroke();
 
-  ctx.font = full ? '15px system-ui, sans-serif' : '14px system-ui, sans-serif';
-  ctx.fillStyle = '#4a433c';
-  wrapLines(ctx, hook, 28, 150, W - 56, full ? 30 : 28);
+  let y = 136;
+
+  y = drawSection(
+    ctx,
+    'WHAT IT IS',
+    fitText(payload.whatIsIt, 150),
+    28,
+    y,
+    W - 56,
+    '700 10px system-ui, sans-serif',
+    full ? '15px system-ui, sans-serif' : '14px system-ui, sans-serif',
+    '#9d9386',
+    '#4a433c',
+    full ? 28 : 26
+  );
+
+  y += 12;
+
+  y = drawSection(
+    ctx,
+    'EXAMPLE',
+    fitText(payload.example, 190),
+    28,
+    y,
+    W - 56,
+    '700 10px system-ui, sans-serif',
+    full ? '15px system-ui, sans-serif' : '14px system-ui, sans-serif',
+    '#9d9386',
+    '#2f2a25',
+    full ? 28 : 26
+  );
+
+  ctx.font = '600 12px system-ui, sans-serif';
+  ctx.fillStyle = '#6f655a';
+  ctx.fillText(payload.cta, 28, H - 52);
 
   ctx.font = '11px "Courier New", monospace';
   ctx.fillStyle = '#b6ada1';
-  ctx.fillText('talk-normie-2-me.vercel.app', 28, H - 30);
+  ctx.fillText(payload.url, 28, H - 30);
 }
 
 function drawPoetry(
   ctx: CanvasRenderingContext2D,
   W: number,
   H: number,
-  repoName: string,
-  hook: string
+  payload: ShareCardPayload
 ) {
   ctx.fillStyle = '#f6efe2';
   ctx.fillRect(0, 0, W, H);
@@ -176,7 +246,7 @@ function drawPoetry(
 
   ctx.font = 'italic 500 20px Georgia, serif';
   ctx.fillStyle = '#2c1c0d';
-  ctx.fillText(repoName, 60, 92);
+  ctx.fillText(payload.repoName, 60, 90);
 
   ctx.strokeStyle = 'rgba(140,110,70,0.32)';
   ctx.lineWidth = 0.75;
@@ -185,9 +255,37 @@ function drawPoetry(
   ctx.lineTo(W - 60, 104);
   ctx.stroke();
 
-  ctx.font = 'italic 16px Georgia, serif';
-  ctx.fillStyle = '#332112';
-  wrapLines(ctx, hook, 60, 142, W - 126, 32);
+  let y = 134;
+
+  y = drawSection(
+    ctx,
+    'what it is',
+    fitText(payload.whatIsIt, 150),
+    60,
+    y,
+    W - 120,
+    '500 10px "Courier New", monospace',
+    'italic 15px Georgia, serif',
+    'rgba(120,94,60,0.74)',
+    '#332112',
+    27
+  );
+
+  y += 10;
+
+  y = drawSection(
+    ctx,
+    'a line from the translation',
+    fitText(payload.example, 180),
+    60,
+    y,
+    W - 120,
+    '500 10px "Courier New", monospace',
+    'italic 16px Georgia, serif',
+    'rgba(120,94,60,0.74)',
+    '#2d1d10',
+    30
+  );
 
   ctx.save();
   ctx.globalAlpha = 0.12;
@@ -209,17 +307,20 @@ function drawPoetry(
   ctx.fillText('✒', 0, 0);
   ctx.restore();
 
+  ctx.font = 'italic 13px Georgia, serif';
+  ctx.fillStyle = '#4a301b';
+  ctx.fillText(payload.cta, 60, H - 54);
+
   ctx.font = '11px "Courier New", monospace';
   ctx.fillStyle = 'rgba(120,94,60,0.76)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 60, H - 36);
+  ctx.fillText(payload.url, 60, H - 34);
 }
 
 function drawEmo(
   ctx: CanvasRenderingContext2D,
   W: number,
   H: number,
-  repoName: string,
-  hook: string
+  payload: ShareCardPayload
 ) {
   ctx.fillStyle = '#f3f2ef';
   ctx.fillRect(0, 0, W, H);
@@ -258,11 +359,39 @@ function drawEmo(
 
   ctx.font = '500 18px "Courier New", monospace';
   ctx.fillStyle = '#1a1a1a';
-  ctx.fillText(repoName, 112, 78);
+  ctx.fillText(payload.repoName, 112, 76);
 
-  ctx.font = '14px "Courier New", monospace';
-  ctx.fillStyle = '#363636';
-  wrapLines(ctx, hook, 112, 118, W - 162, 28);
+  let y = 108;
+
+  y = drawSection(
+    ctx,
+    'what this is',
+    fitText(payload.whatIsIt, 130),
+    112,
+    y,
+    W - 164,
+    '700 10px "Courier New", monospace',
+    '14px "Courier New", monospace',
+    'rgba(92,92,92,0.72)',
+    '#363636',
+    24
+  );
+
+  y += 8;
+
+  y = drawSection(
+    ctx,
+    'a page from it',
+    fitText(payload.example, 165),
+    112,
+    y,
+    W - 164,
+    '700 10px "Courier New", monospace',
+    '14px "Courier New", monospace',
+    'rgba(92,92,92,0.72)',
+    '#202020',
+    24
+  );
 
   ctx.save();
   ctx.globalAlpha = 0.14;
@@ -272,17 +401,20 @@ function drawEmo(
   ctx.fillText('†', W - 72, 132);
   ctx.restore();
 
+  ctx.font = '12px "Courier New", monospace';
+  ctx.fillStyle = '#555';
+  ctx.fillText(payload.cta, 112, H - 52);
+
   ctx.font = '10px "Courier New", monospace';
   ctx.fillStyle = 'rgba(118,118,118,0.66)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 112, H - 32);
+  ctx.fillText(payload.url, 112, H - 32);
 }
 
 function drawBro(
   ctx: CanvasRenderingContext2D,
   W: number,
   H: number,
-  repoName: string,
-  hook: string
+  payload: ShareCardPayload
 ) {
   ctx.fillStyle = '#0f0f0f';
   ctx.fillRect(0, 0, W, H);
@@ -310,23 +442,54 @@ function drawBro(
 
   ctx.fillStyle = '#fff';
   ctx.font = '900 26px "Arial Black", Impact, sans-serif';
-  ctx.fillText(repoName.toUpperCase(), 40, 100);
+  ctx.fillText(payload.repoName.toUpperCase(), 40, 96);
 
-  ctx.font = '700 13px "Arial Black", sans-serif';
-  ctx.fillStyle = '#ccc';
-  wrapLines(ctx, hook.toUpperCase(), 40, 138, W - 80, 26);
+  let y = 126;
+
+  y = drawSection(
+    ctx,
+    'WHAT IT IS',
+    fitText(payload.whatIsIt, 110).toUpperCase(),
+    40,
+    y,
+    W - 80,
+    '900 10px "Arial Black", sans-serif',
+    '700 13px "Arial Black", sans-serif',
+    '#7d7d7d',
+    '#d4d4d4',
+    22
+  );
+
+  y += 8;
+
+  y = drawSection(
+    ctx,
+    'SAMPLE',
+    fitText(payload.example, 150).toUpperCase(),
+    40,
+    y,
+    W - 80,
+    '900 10px "Arial Black", sans-serif',
+    '700 13px "Arial Black", sans-serif',
+    '#7d7d7d',
+    '#ffffff',
+    22
+  );
+
+  ctx.font = '900 12px "Arial Black", sans-serif';
+  ctx.fillStyle = '#d9d9d9';
+  ctx.fillText(payload.cta.toUpperCase(), 40, H - 56);
 
   ctx.font = '11px "Courier New", monospace';
   ctx.fillStyle = 'rgba(150,150,150,0.7)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 40, H - 36);
+  ctx.fillText(payload.url, 40, H - 36);
 }
 
 function drawConspiracy(
   ctx: CanvasRenderingContext2D,
   W: number,
   H: number,
-  repoName: string,
-  hook: string
+  payload: ShareCardPayload
 ) {
   ctx.fillStyle = '#fefdf5';
   ctx.fillRect(0, 0, W, H);
@@ -369,7 +532,7 @@ function drawConspiracy(
   ctx.textAlign = 'left';
   ctx.font = '11px "Courier New", monospace';
   ctx.fillStyle = '#555';
-  ctx.fillText(`FILE REF: ${repoName.toUpperCase()}`, 40, 84);
+  ctx.fillText(`FILE REF: ${payload.repoName.toUpperCase()}`, 40, 84);
 
   ctx.strokeStyle = '#ccc';
   ctx.lineWidth = 0.75;
@@ -378,55 +541,52 @@ function drawConspiracy(
   ctx.lineTo(W - 40, 96);
   ctx.stroke();
 
-  const hookWords = hook.split(' ');
-  const redactIdxs = new Set([Math.floor(hookWords.length * 0.3), Math.floor(hookWords.length * 0.6)]);
-  ctx.font = '13px "Courier New", monospace';
-
-  let line = '';
-  let lineWords: string[] = [];
   let y = 126;
-  const maxW = W - 100;
 
-  for (let i = 0; i <= hookWords.length; i++) {
-    const word = hookWords[i];
-    const isRedact = redactIdxs.has(i);
-    const displayWord = isRedact ? '███████' : word || '';
-    const test = line ? `${line} ${displayWord}` : displayWord;
+  y = drawSection(
+    ctx,
+    'COVER STORY',
+    fitText(payload.whatIsIt, 120),
+    40,
+    y,
+    W - 80,
+    '700 10px "Courier New", monospace',
+    '13px "Courier New", monospace',
+    '#7a7a72',
+    '#1a1a1a',
+    24
+  );
 
-    if ((ctx.measureText(test).width > maxW && line) || i === hookWords.length) {
-      let lx = 40;
-      for (const lw of lineWords) {
-        if (lw === '███████') {
-          const tw = ctx.measureText(lw).width + 4;
-          ctx.fillStyle = '#111';
-          ctx.fillRect(lx - 2, y - 14, tw, 18);
-          lx += tw + ctx.measureText(' ').width;
-        } else {
-          ctx.fillStyle = '#1a1a1a';
-          ctx.fillText(lw, lx, y);
-          lx += ctx.measureText(`${lw} `).width;
-        }
-      }
-      lineWords = displayWord ? [displayWord] : [];
-      line = displayWord;
-      y += 28;
-    } else {
-      line = test;
-      lineWords.push(displayWord);
-    }
-  }
+  y += 8;
+
+  y = drawSection(
+    ctx,
+    'EXHIBIT A',
+    fitText(payload.example, 150),
+    40,
+    y,
+    W - 80,
+    '700 10px "Courier New", monospace',
+    '13px "Courier New", monospace',
+    '#7a7a72',
+    '#1a1a1a',
+    24
+  );
+
+  ctx.font = '11px "Courier New", monospace';
+  ctx.fillStyle = '#5a5a50';
+  ctx.fillText(payload.cta, 40, H - 58);
 
   ctx.font = '10px "Courier New", monospace';
   ctx.fillStyle = 'rgba(120,120,100,0.7)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 40, H - 42);
+  ctx.fillText(payload.url, 40, H - 40);
 }
 
 function drawFlirty(
   ctx: CanvasRenderingContext2D,
   W: number,
   H: number,
-  repoName: string,
-  hook: string
+  payload: ShareCardPayload
 ) {
   ctx.fillStyle = '#fff8f8';
   ctx.fillRect(0, 0, W, H);
@@ -465,18 +625,46 @@ function drawFlirty(
 
   ctx.font = 'italic 500 22px Georgia, serif';
   ctx.fillStyle = '#441828';
-  ctx.fillText(repoName, 50, 92);
+  ctx.fillText(payload.repoName, 50, 88);
 
   ctx.strokeStyle = 'rgba(200,130,145,0.35)';
   ctx.lineWidth = 0.75;
   ctx.beginPath();
-  ctx.moveTo(50, 104);
-  ctx.lineTo(W - 50, 104);
+  ctx.moveTo(50, 100);
+  ctx.lineTo(W - 50, 100);
   ctx.stroke();
 
-  ctx.font = 'italic 15px Georgia, serif';
-  ctx.fillStyle = '#3a1522';
-  wrapLines(ctx, hook, 50, 138, W - 120, 30);
+  let y = 130;
+
+  y = drawSection(
+    ctx,
+    'what it is',
+    fitText(payload.whatIsIt, 130),
+    50,
+    y,
+    W - 110,
+    'italic 11px Georgia, serif',
+    'italic 15px Georgia, serif',
+    'rgba(180,100,120,0.72)',
+    '#3a1522',
+    26
+  );
+
+  y += 8;
+
+  y = drawSection(
+    ctx,
+    'a little taste',
+    fitText(payload.example, 165),
+    50,
+    y,
+    W - 110,
+    'italic 11px Georgia, serif',
+    'italic 15px Georgia, serif',
+    'rgba(180,100,120,0.72)',
+    '#2d1020',
+    28
+  );
 
   ctx.save();
   ctx.globalAlpha = 0.16;
@@ -489,17 +677,20 @@ function drawFlirty(
   ctx.restore();
 
   ctx.textAlign = 'left';
+  ctx.font = 'italic 12px Georgia, serif';
+  ctx.fillStyle = '#8a5062';
+  ctx.fillText(payload.cta, 50, H - 56);
+
   ctx.font = 'italic 11px Georgia, serif';
   ctx.fillStyle = 'rgba(180,100,120,0.6)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 50, H - 38);
+  ctx.fillText(payload.url, 50, H - 38);
 }
 
 function drawBrainrot(
   ctx: CanvasRenderingContext2D,
   W: number,
   H: number,
-  repoName: string,
-  hook: string
+  payload: ShareCardPayload
 ) {
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, W, H);
@@ -535,11 +726,39 @@ function drawBrainrot(
   ctx.textAlign = 'left';
   ctx.font = '900 26px system-ui, "Arial Black", sans-serif';
   ctx.fillStyle = '#000';
-  ctx.fillText(repoName, 24, 100);
+  ctx.fillText(payload.repoName, 24, 96);
 
-  ctx.font = '15px system-ui, sans-serif';
-  ctx.fillStyle = '#111';
-  wrapLines(ctx, hook, 24, 138, W - 60, 28);
+  let y = 126;
+
+  y = drawSection(
+    ctx,
+    'THE APP',
+    fitText(payload.whatIsIt, 120),
+    24,
+    y,
+    W - 48,
+    '900 10px system-ui, sans-serif',
+    '15px system-ui, sans-serif',
+    '#666',
+    '#111',
+    24
+  );
+
+  y += 8;
+
+  y = drawSection(
+    ctx,
+    'LIVE REACTION',
+    fitText(payload.example, 160),
+    24,
+    y,
+    W - 48,
+    '900 10px system-ui, sans-serif',
+    '15px system-ui, sans-serif',
+    '#666',
+    '#000',
+    26
+  );
 
   ctx.save();
   ctx.translate(W - 100, H - 100);
@@ -562,17 +781,20 @@ function drawBrainrot(
   ctx.restore();
 
   ctx.textAlign = 'left';
+  ctx.font = '700 12px system-ui, sans-serif';
+  ctx.fillStyle = '#444';
+  ctx.fillText(payload.cta, 24, H - 52);
+
   ctx.font = '11px system-ui, monospace';
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 24, H - 32);
+  ctx.fillText(payload.url, 24, H - 32);
 }
 
 function drawSporty(
   ctx: CanvasRenderingContext2D,
   W: number,
   H: number,
-  repoName: string,
-  hook: string
+  payload: ShareCardPayload
 ) {
   ctx.fillStyle = '#f8f8f8';
   ctx.fillRect(0, 0, W, H);
@@ -595,36 +817,67 @@ function drawSporty(
   ctx.textAlign = 'left';
   ctx.font = '900 30px "Arial Black", Impact, sans-serif';
   ctx.fillStyle = '#0a0a0a';
-  ctx.fillText(repoName.toUpperCase(), 28, 108);
+  ctx.fillText(payload.repoName.toUpperCase(), 28, 104);
 
   ctx.strokeStyle = '#1a1a1a';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(28, 118);
-  ctx.lineTo(W - 28, 118);
+  ctx.moveTo(28, 114);
+  ctx.lineTo(W - 28, 114);
   ctx.stroke();
 
-  ctx.font = '800 13px "Arial Black", Impact, sans-serif';
-  ctx.fillStyle = '#222';
-  wrapLines(ctx, hook.toUpperCase(), 28, 152, W - 60, 26);
+  let y = 142;
+
+  y = drawSection(
+    ctx,
+    'SCOUTING REPORT',
+    fitText(payload.whatIsIt, 110).toUpperCase(),
+    28,
+    y,
+    W - 56,
+    '900 10px "Arial Black", sans-serif',
+    '800 13px "Arial Black", sans-serif',
+    '#666',
+    '#222',
+    22
+  );
+
+  y += 8;
+
+  y = drawSection(
+    ctx,
+    'TAPE SAMPLE',
+    fitText(payload.example, 145).toUpperCase(),
+    28,
+    y,
+    W - 56,
+    '900 10px "Arial Black", sans-serif',
+    '800 13px "Arial Black", sans-serif',
+    '#666',
+    '#111',
+    22
+  );
 
   ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(28, H - 72, 130, 36);
+  ctx.fillRect(28, H - 76, 142, 38);
   ctx.font = '700 10px "Arial Black", sans-serif';
   ctx.fillStyle = '#fff';
-  ctx.fillText('W  ·  DEPLOYED  ·  BUILT', 36, H - 50);
+  ctx.fillText('W  ·  NO JARGON  ·  BUILT', 36, H - 52);
+
+  ctx.font = '700 11px "Arial Black", sans-serif';
+  ctx.fillStyle = '#444';
+  ctx.fillText(payload.cta.toUpperCase(), 188, H - 52);
 
   ctx.font = '10px "Courier New", monospace';
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 28, H - 28);
+  ctx.fillText(payload.url, 28, H - 28);
 }
 
 function drawOtaku(
   ctx: CanvasRenderingContext2D,
   W: number,
   H: number,
-  repoName: string,
-  hook: string
+  payload: ShareCardPayload
 ) {
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, W, H);
@@ -674,24 +927,52 @@ function drawOtaku(
 
   ctx.font = '900 28px "Arial Black", system-ui, sans-serif';
   ctx.fillStyle = '#000';
-  ctx.fillText(repoName, 32, 96);
+  ctx.fillText(payload.repoName, 32, 92);
 
   ctx.strokeStyle = '#000';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(32, 106);
-  ctx.lineTo(W - 32, 106);
+  ctx.moveTo(32, 102);
+  ctx.lineTo(W - 32, 102);
   ctx.stroke();
 
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(32, 112);
-  ctx.lineTo(W - 32, 112);
+  ctx.moveTo(32, 108);
+  ctx.lineTo(W - 32, 108);
   ctx.stroke();
 
-  ctx.font = '700 14px system-ui, sans-serif';
-  ctx.fillStyle = '#111';
-  wrapLines(ctx, hook, 32, 148, W - 210, 28);
+  let y = 136;
+
+  y = drawSection(
+    ctx,
+    'LORE DROP',
+    fitText(payload.whatIsIt, 115),
+    32,
+    y,
+    W - 220,
+    '700 10px system-ui, sans-serif',
+    '700 14px system-ui, sans-serif',
+    '#666',
+    '#111',
+    24
+  );
+
+  y += 6;
+
+  y = drawSection(
+    ctx,
+    'ARC PREVIEW',
+    fitText(payload.example, 145),
+    32,
+    y,
+    W - 220,
+    '700 10px system-ui, sans-serif',
+    '700 14px system-ui, sans-serif',
+    '#666',
+    '#000',
+    24
+  );
 
   ctx.fillStyle = '#000';
   ctx.fillRect(W - 160, H - 90, 136, 54);
@@ -703,16 +984,16 @@ function drawOtaku(
   ctx.fillText('9000+', W - 92, H - 50);
 
   ctx.textAlign = 'left';
+  ctx.font = '700 11px system-ui, sans-serif';
+  ctx.fillStyle = '#333';
+  ctx.fillText(payload.cta, 32, H - 52);
+
   ctx.font = '10px system-ui, sans-serif';
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.fillText('talk-normie-2-me.vercel.app', 32, H - 30);
+  ctx.fillText(payload.url, 32, H - 30);
 }
 
-export function generateShareCard(
-  mode: PersonalityMode,
-  repoName: string,
-  hook: string
-): Promise<string> {
+export function generateShareCard(payload: ShareCardPayload): Promise<string> {
   return new Promise((resolve) => {
     const W = 900;
     const H = 540;
@@ -726,36 +1007,36 @@ export function generateShareCard(
       return;
     }
 
-    switch (mode) {
+    switch (payload.mode) {
       case 'poetry':
-        drawPoetry(ctx, W, H, repoName, hook);
+        drawPoetry(ctx, W, H, payload);
         break;
       case 'emo':
-        drawEmo(ctx, W, H, repoName, hook);
+        drawEmo(ctx, W, H, payload);
         break;
       case 'bro':
-        drawBro(ctx, W, H, repoName, hook);
+        drawBro(ctx, W, H, payload);
         break;
       case 'conspiracy':
-        drawConspiracy(ctx, W, H, repoName, hook);
+        drawConspiracy(ctx, W, H, payload);
         break;
       case 'flirty':
-        drawFlirty(ctx, W, H, repoName, hook);
+        drawFlirty(ctx, W, H, payload);
         break;
       case 'brainrot':
-        drawBrainrot(ctx, W, H, repoName, hook);
+        drawBrainrot(ctx, W, H, payload);
         break;
       case 'sporty':
-        drawSporty(ctx, W, H, repoName, hook);
+        drawSporty(ctx, W, H, payload);
         break;
       case 'otaku':
-        drawOtaku(ctx, W, H, repoName, hook);
+        drawOtaku(ctx, W, H, payload);
         break;
       case 'fullnormie':
-        drawNormie(ctx, W, H, repoName, hook, true);
+        drawNormie(ctx, W, H, payload, true);
         break;
       default:
-        drawNormie(ctx, W, H, repoName, hook, false);
+        drawNormie(ctx, W, H, payload, false);
         break;
     }
 
