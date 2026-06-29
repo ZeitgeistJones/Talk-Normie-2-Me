@@ -188,8 +188,8 @@
 .sectionDark:last-child { border-bottom: none; }
 .sectionLabelLight { font-size: 10px; font-weight: 500; color: #bbb; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
 .sectionLabelDark { font-size: 10px; font-weight: 500; color: #666; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
-.sectionTextLight { font-size: 13px; color: #555; line-height: 1.65; white-space: pre-wrap; }
-.sectionTextDark { font-size: 14px; color: #ddd; line-height: 1.7; white-space: pre-wrap; }
+.sectionTextLight { font-size: 15px; color: #555; line-height: 1.65; white-space: pre-wrap; }
+.sectionTextDark { font-size: 16px; color: #ddd; line-height: 1.7; white-space: pre-wrap; }
 
 /* ── Poetry-specific body ────────────────────────────────────────────────── */
 .poetryBodyLight {
