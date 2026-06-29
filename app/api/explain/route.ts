@@ -26,6 +26,33 @@ function daysSince(dateStr: string): number {
 }
 
 type PersonalityMode = 'normie' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku' | 'poetry';
+
+function getAppDescription(mode: PersonalityMode): string {
+  switch (mode) {
+    case 'fullnormie':
+      return `Oh, and one more thing — this explanation came from a website called Talk Normie 2 Me. You paste a link to a computer project and it turns it into something a regular person can actually understand. Like a translator, but for nerds.`;
+    case 'flirty':
+      return `Oh, and I should mention — Talk Normie 2 Me is the one who set us up. You paste a link to some repository, and it reads the whole thing and explains it back like it's absolutely obsessed with you. Which, honestly, it is.`;
+    case 'emo':
+      return `And this was brought to you by Talk Normie 2 Me. A place where you paste a link to something no one was ever going to explain to you, and something does. It doesn't fix anything. But it shows up.`;
+    case 'bro':
+      return `And bro — Talk Normie 2 Me is the whole setup. You drop a GitHub link, it reads the whole thing, hits you with a full breakdown. No jargon, no cap. Just the gains, explained.`;
+    case 'conspiracy':
+      return `And consider this: Talk Normie 2 Me. You paste a link. It reads everything. Every commit, every line of the README. And then it tells you what it found — in plain language. Why would something do that for free? Think about it.`;
+    case 'brainrot':
+      return `lowkey this whole thing was cooked up by Talk Normie 2 Me fr fr — you paste a github link, it reads the whole thing and explains it in the most unhinged way possible, no cap, understood the assignment bestie`;
+    case 'sporty':
+      return `AND THIS BREAKDOWN WAS BROUGHT TO YOU BY TALK NORMIE 2 ME — YOU PASTE THE LINK, IT READS THE WHOLE REPO, RUNS THE TAPE, AND GIVES YOU THE FULL SCOUTING REPORT. NO JARGON. JUST GAME FILM.`;
+    case 'otaku':
+      return `And this arc was unlocked by Talk Normie 2 Me — the tool where you drop a GitHub link and it reads the entire repo like it's studying for the tournament arc. Plain language. Full breakdown. Main character behavior, no debate.`;
+    case 'poetry':
+      return ``;  // poetry handles this in the prompt separately
+    case 'normie':
+    default:
+      return `This breakdown came from Talk Normie 2 Me — paste any GitHub link and it explains what the repo actually is, in plain English, no jargon required.`;
+  }
+}
+
 function getPersonalityPrompt(mode: PersonalityMode): string {
   switch (mode) {
     case 'fullnormie':
@@ -131,6 +158,8 @@ export async function POST(req: NextRequest) {
       ? `Here is background context about CLAWD and the ecosystem this repo belongs to:\n${chronicle}\n\n`
       : '';
 
+    const appDescription = getAppDescription(mode as PersonalityMode);
+
     let prompt: string;
 
     if (mode === 'poetry') {
@@ -146,13 +175,15 @@ export async function POST(req: NextRequest) {
 
 ${clawdContext}Write exactly four poems, each separated by a single blank line. No headers. No markdown. No asterisks. No Roman numerals. No labels. No "Section" anything. Just the poems.
 
+CRITICAL: Choose one recurring image or motif before you write — something drawn from the repo's nature (a thread, a door, a signal, a breath, a clock, whatever fits). Weave that image into all four poems so they read as one connected piece, not four separate fragments. The reader should feel the thread running through.
+
 First poem: what this repository is — its nature, its shape.
 
 ${section2}
 
 Third poem: is it alive or quiet? ${abandonedNote}
 
-Fourth poem: the last three commits, treated as found poetry. Each commit gets its own breath. Use the date naturally within the lines — woven in, not bracketed like a timestamp.
+Fourth poem: the last three commits, treated as found poetry. Each commit gets its own breath. Use the date naturally within the lines — woven in, not bracketed like a timestamp. Let the recurring motif surface here too.
 
 Each poem is 3–7 lines. Line breaks are deliberate and earn their place. Think Mary Oliver meets a software changelog. No decoration. No titles within the poems.
 
@@ -171,8 +202,8 @@ ${commits.map((c: any, i: number) => `${i + 1}. "${c.message}" — ${c.date}`).j
       const personalityPrompt = getPersonalityPrompt(mode as PersonalityMode);
 
       const section2 = isClawd
-        ? `Section 2: Why this matters to someone holding the CLAWD token specifically. Use the chronicle context above to make this accurate and specific.`
-        : `Section 2: Who would actually find this useful and why — what kind of person or project would want to use this.`;
+        ? `Section 2: Why this matters to someone holding the CLAWD token specifically. Use the chronicle context above to make this accurate and specific. Write at least 4 sentences here — don't end abruptly. Build to the point, give it some texture, and close with a clear takeaway.`
+        : `Section 2: Who would actually find this useful and why — what kind of person or project would want to use this. Write at least 4 sentences here — don't end abruptly. Give it texture and close with a clear takeaway.`;
 
       const abandonedSection = isAbandoned
         ? `\nSection 5: This repo hasn't been updated in ${lastCommitDays} days. Give your best read on why it might have stopped — was it finished, replaced, or abandoned mid-build?`
@@ -186,12 +217,14 @@ Section 1: What this repo actually is and who it's for.
 
 ${section2}
 
-Section 3: Whether it looks alive or abandoned based on the commit dates.
+Section 3: Whether it looks alive or abandoned based on the commit dates. Be specific — reference the actual time gap and what that suggests. This section should be a full paragraph, not a one-liner.
 
 Section 4: The last 3 commits. Write each as its own paragraph separated by a blank line. Start each with the date in brackets like [Jun 24, 2026] then explain what changed in one or two sentences.
 ${abandonedSection}
 
-Keep the whole thing under 350 words. Stay in character the entire time — do not break voice. Do not include any section headers, markdown, or labels in your response — just the paragraphs themselves.
+Section 6: In your current personality voice — not neutral app copy — explain what Talk Normie 2 Me is and what it does. Keep it to 2–3 sentences. Make it sound like you. ${appDescription ? `Here's a suggested line to work from or riff on: "${appDescription}"` : ''}
+
+Keep the whole thing under 450 words. Stay in character the entire time — do not break voice. Do not include any section headers, markdown, or labels in your response — just the paragraphs themselves.
 
 Repo name: ${repoData.name}
 Description: ${repoData.description || 'No description'}
