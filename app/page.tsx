@@ -41,6 +41,7 @@ type ShareCardPayload = {
   hook: string;
   whatIsIt: string;
   example: string;
+  status: string;
   cta: string;
   url: string;
 };
@@ -99,15 +100,15 @@ const MODE_LABEL_STYLE: Record<PersonalityMode, React.CSSProperties> = {
 };
 
 const SECTION_LABELS: Record<PersonalityMode, string[]> = {
-  normie: ['What it is', 'Why it matters', 'Status', 'Recent commits', 'Why it stopped'],
-  fullnormie: ['What it is', 'Why it matters', 'Is it alive?', 'What changed', 'Why it stopped'],
-  bro: ['THE REP 💪', 'WHY IT SLAPS', 'ALIVE OR DEAD', 'RECENT PLAYS', 'WHY IT QUIT'],
-  flirty: ['what it is 💋', 'why you want it', 'seeing anyone?', 'recently active', 'why it ghosted'],
-  emo: ['what this is', 'why it hurts', 'still breathing?', 'the last words', 'where it went'],
-  brainrot: ['the lore', 'why it bussin', 'still alive fr?', 'recent glazing', 'why it flopped'],
-  sporty: ['THE PLAYBOOK', 'WHY IT WINS', 'GAME STATUS', 'RECENT PLAYS', 'FINAL WHISTLE'],
-  otaku: ['the lore', 'power level', 'arc status', 'episode recap', 'why it ended'],
-  conspiracy: ['the cover story', 'the real reason', 'still active?', 'the trail', 'why it went dark'],
+  normie: ['What it is', 'Why it matters', 'Status', 'Recent commits', 'Why it stopped', 'About this tool'],
+  fullnormie: ['What it is', 'Why it matters', 'Is it alive?', 'What changed', 'Why it stopped', 'About this tool'],
+  bro: ['THE REP 💪', 'WHY IT SLAPS', 'ALIVE OR DEAD', 'RECENT PLAYS', 'WHY IT QUIT', 'WHAT IS THIS'],
+  flirty: ['what it is 💋', 'why you want it', 'seeing anyone?', 'recently active', 'why it ghosted', 'so what is this'],
+  emo: ['what this is', 'why it hurts', 'still breathing?', 'the last words', 'where it went', 'what even is this'],
+  brainrot: ['the lore', 'why it bussin', 'still alive fr?', 'recent glazing', 'why it flopped', 'what is this app'],
+  sporty: ['THE PLAYBOOK', 'WHY IT WINS', 'GAME STATUS', 'RECENT PLAYS', 'FINAL WHISTLE', 'THE PROGRAM'],
+  otaku: ['the lore', 'power level', 'arc status', 'episode recap', 'why it ended', 'what is this'],
+  conspiracy: ['the cover story', 'the real reason', 'still active?', 'the trail', 'why it went dark', 'what is this operation'],
   poetry: ['i.', 'ii.', 'iii.', 'iv.', 'v.'],
 };
 
@@ -199,13 +200,9 @@ function buildSharePayload(result: any, mode: PersonalityMode): ShareCardPayload
     result?.meta?.description ||
     `an AI-translated explanation of ${result?.meta?.name || 'this repo'}`;
 
-  const exampleSource =
-    proseSections[1] || proseSections[0] || explanation || result?.shareHook || '';
+  const example = proseSections[1] || proseSections[0] || explanation || result?.shareHook || '';
 
-  const example =
-    exampleSource.length > 220
-      ? `${exampleSource.slice(0, 217).trim()}...`
-      : exampleSource;
+  const status = proseSections[2] || '';
 
   return {
     repoName: result?.meta?.name || 'repo',
@@ -213,6 +210,7 @@ function buildSharePayload(result: any, mode: PersonalityMode): ShareCardPayload
     hook: result?.shareHook || `explained ${result?.meta?.name || 'repo'} on Talk Normie 2 Me`,
     whatIsIt,
     example,
+    status,
     cta: getModeCTA(mode),
     url: 'talk-normie-2-me.vercel.app',
   };
