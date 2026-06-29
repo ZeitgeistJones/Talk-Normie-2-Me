@@ -35,6 +35,16 @@ type PersonalityMode =
   | 'otaku'
   | 'poetry';
 
+type ShareCardPayload = {
+  repoName: string;
+  mode: PersonalityMode;
+  hook: string;
+  whatIsIt: string;
+  example: string;
+  cta: string;
+  url: string;
+};
+
 const MODES: { id: PersonalityMode; label: string; emoji: string }[] = [
   { id: 'normie', label: 'Normie', emoji: '💬' },
   { id: 'fullnormie', label: 'Full Normie', emoji: '🧠' },
@@ -137,17 +147,88 @@ function parsePoetryStanzas(text: string): string[] {
     .filter((s) => s.length > 0);
 }
 
+function getModeCTA(mode: PersonalityMode): string {
+  switch (mode) {
+    case 'poetry':
+      return 'read the rest at';
+    case 'emo':
+      return 'if you want the whole page, it is at';
+    case 'bro':
+      return 'full breakdown at';
+    case 'conspiracy':
+      return 'review the full file at';
+    case 'flirty':
+      return 'see the full thing at';
+    case 'brainrot':
+      return 'full lore dump at';
+    case 'sporty':
+      return 'watch the full tape at';
+    case 'otaku':
+      return 'continue the arc at';
+    case 'fullnormie':
+      return 'see the simple version at';
+    case 'normie':
+    default:
+      return 'check it out at';
+  }
+}
+
+function buildSharePayload(result: any, mode: PersonalityMode): ShareCardPayload {
+  const explanation = String(result?.explanation || '').trim();
+
+  const proseSections =
+    mode === 'poetry'
+      ? parsePoetryStanzas(explanation)
+      : explanation
+          .split('\n')
+          .reduce((acc: string[][], line: string) => {
+            if (line.trim() === '') {
+              if (acc[acc.length - 1]?.length > 0) acc.push([]);
+            } else {
+              if (!acc.length) acc.push([]);
+              acc[acc.length - 1].push(line.trim());
+            }
+            return acc;
+          }, [[]])
+          .filter((s: string[]) => s.length > 0)
+          .map((s: string[]) => stripSectionLabel(s.join(' ')))
+          .filter((s: string) => s.length > 0);
+
+  const whatIsIt =
+    proseSections[0] ||
+    result?.meta?.description ||
+    `an AI-translated explanation of ${result?.meta?.name || 'this repo'}`;
+
+  const exampleSource =
+    proseSections[1] || proseSections[0] || explanation || result?.shareHook || '';
+
+  const example =
+    exampleSource.length > 220
+      ? `${exampleSource.slice(0, 217).trim()}...`
+      : exampleSource;
+
+  return {
+    repoName: result?.meta?.name || 'repo',
+    mode,
+    hook: result?.shareHook || `explained ${result?.meta?.name || 'repo'} on Talk Normie 2 Me`,
+    whatIsIt,
+    example,
+    cta: getModeCTA(mode),
+    url: 'talk-normie-2-me.vercel.app',
+  };
+}
+
 function ShareButton({ result, mode, dark }: { result: any; mode: PersonalityMode; dark: boolean }) {
   const [saved, setSaved] = useState(false);
 
   async function handleShare() {
-    const hook = result.shareHook || `explained ${result.meta?.name} on Talk Normie 2 Me`;
-    const dataUrl = await generateShareCard(mode, result.meta?.name || 'repo', hook);
+    const payload = buildSharePayload(result, mode);
+    const dataUrl = await generateShareCard(payload);
 
     if (!dataUrl) return;
 
     const link = document.createElement('a');
-    link.download = `tn2m-${mode}-${result.meta?.name || 'card'}.png`;
+    link.download = `tn2m-${mode}-${payload.repoName || 'card'}.png`;
     link.href = dataUrl;
     link.click();
 
