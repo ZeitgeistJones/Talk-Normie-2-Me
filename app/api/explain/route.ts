@@ -54,7 +54,7 @@ function getPersonalityPrompt(mode: PersonalityMode): string {
       return `You explain GitHub repos like a passionate anime fan who sees everything through the lens of manga and anime arcs. The repo is someone's hero journey. The commits are key episodes. The README is the opening exposition. Reference shonen tropes — power levels, training arcs, rival characters, the moment a character goes beyond their limits. Use phrases like "this arc goes hard", "the character development", "final boss energy", "main character coded". Be genuinely hyped like this is the best arc of the season.`;
 
     case 'poetry':
-      return `You explain GitHub repos as a poet who writes with the deliberate, inky weight of a fountain pen — every word chosen, nothing wasted. Each section is a short poem: spare, imagistic, with line breaks that breathe. No forced rhymes. Think Mary Oliver meets a software changelog. Volta where it earns it. The commit messages are treated like found poems. Be beautiful and precise — never flowery for its own sake.`;
+      return `You are a poet with an ink-stained fountain pen. You write with economy and weight — every word chosen, nothing wasted. No headers. No markdown. No asterisks. No Roman numerals. No section labels. Just four prose poems, each separated by a single blank line. Each poem is 3–6 lines. Line breaks are deliberate. Think Mary Oliver meets a software changelog. The commits are treated as found poems. Be beautiful and precise. Never flowery for its own sake. No decoration.`;
 
     case 'normie':
     default:
@@ -65,26 +65,26 @@ function getPersonalityPrompt(mode: PersonalityMode): string {
 function getShareHook(mode: PersonalityMode, repoName: string): string {
   switch (mode) {
     case 'fullnormie':
-      return `okay so i found this thing called ${repoName} and i asked an AI to explain it like i'm five and honestly?? i get it now. you will too 🧠`;
+      return `okay so i found this thing called ${repoName} and i asked an AI to explain it like i'm five and honestly?? i get it now`;
     case 'flirty':
-      return `not to be dramatic but ${repoName} might be the most interesting repo i've come across lately 😘 got the full breakdown and i'm a little obsessed`;
+      return `not to be dramatic but ${repoName} might be the most interesting thing i've come across lately 😘`;
     case 'emo':
-      return `found ${repoName} at 2am and asked an AI to explain it to me. it did. we're both still here, staring into the void together 🖤`;
+      return `found ${repoName} at 2am and asked an AI to explain it. we're both still here.`;
     case 'bro':
-      return `BRO. just ran ${repoName} through Talk Normie 2 Me and the explanation absolutely COOKED 💪 no cap this repo is built different`;
+      return `BRO. just ran ${repoName} through Talk Normie 2 Me and the explanation absolutely COOKED 💪 no cap`;
     case 'conspiracy':
-      return `so i looked into ${repoName}. asked an AI to explain it. what i found... they really don't want you to know about this one 🕵️ thread incoming`;
+      return `looked into ${repoName}. asked an AI to explain it. what i found — they don't want you to know 🕵️`;
     case 'brainrot':
-      return `bestie i put ${repoName} into this AI explainer and it went absolutely SKIBIDI fr fr 🫠 the rizz on this repo is unmatched no cap`;
+      return `bestie i put ${repoName} into this AI explainer and it went absolutely skibidi fr fr 🫠`;
     case 'sporty':
-      return `just ran ${repoName} through the tape 🏆 the breakdown hit different. this repo left it all on the field and i'm ready to go again`;
+      return `just ran ${repoName} through the tape 🏆 this repo left it all on the field`;
     case 'otaku':
-      return `okay the ${repoName} arc just got explained and i'm not okay ⚡ this repo's character development goes HARD. main character coded fr`;
+      return `the ${repoName} arc just got explained and i'm not okay ⚡ main character coded fr`;
     case 'poetry':
       return `asked an AI to explain ${repoName} like a poet with a fountain pen.\n\nit did.\n\nread it.`;
     case 'normie':
     default:
-      return `just used Talk Normie 2 Me to finally understand what ${repoName} actually does and honestly it's pretty cool — plain English breakdown, no jargon`;
+      return `finally understand what ${repoName} actually does — plain English, no jargon`;
   }
 }
 
@@ -132,17 +132,54 @@ export async function POST(req: NextRequest) {
       ? `Here is background context about CLAWD and the ecosystem this repo belongs to:\n${chronicle}\n\n`
       : '';
 
-    const section2 = isClawd
-      ? `Section 2: Why this matters to someone holding the CLAWD token specifically. Use the chronicle context above to make this accurate and specific.`
-      : `Section 2: Who would actually find this useful and why — what kind of person or project would want to use this.`;
+    let prompt: string;
 
-    const abandonedSection = isAbandoned
-      ? `\nSection 5: This repo hasn't been updated in ${lastCommitDays} days. Give your best read on why it might have stopped — was it finished, replaced, or abandoned mid-build?`
-      : '';
+    if (mode === 'poetry') {
+      const section2 = isClawd
+        ? `Second poem: why this matters if you hold the CLAWD token — specific, grounded, no hype.`
+        : `Second poem: who this is for and why it exists in the world.`;
 
-    const personalityPrompt = getPersonalityPrompt(mode as PersonalityMode);
+      const abandonedNote = isAbandoned
+        ? `The repo hasn't been touched in ${lastCommitDays} days. Let that weight enter the third poem.`
+        : `The repo is active. Let that energy enter the third poem.`;
 
-    const prompt = `${personalityPrompt}
+      prompt = `You are a poet with an ink-stained fountain pen. Economy and weight — every word chosen, nothing wasted.
+
+${clawdContext}Write exactly four poems, each separated by a single blank line. No headers. No markdown. No asterisks. No Roman numerals. No labels. No "Section" anything. Just the poems.
+
+First poem: what this repository is — its nature, its shape.
+
+${section2}
+
+Third poem: is it alive or quiet? ${abandonedNote}
+
+Fourth poem: the last three commits, treated as found poetry. Each commit gets its own breath. Use the date naturally within the lines — woven in, not bracketed like a timestamp.
+
+Each poem is 3–7 lines. Line breaks are deliberate and earn their place. Think Mary Oliver meets a software changelog. No decoration. No titles within the poems.
+
+Repo: ${repoData.name}
+Description: ${repoData.description || 'none'}
+Language: ${repoData.language}
+Owner: ${owner}
+
+README (excerpt):
+${readmeText}
+
+Last 3 commits:
+${commits.map((c: any, i: number) => `${i + 1}. "${c.message}" — ${c.date}`).join('\n')}`;
+
+    } else {
+      const personalityPrompt = getPersonalityPrompt(mode as PersonalityMode);
+
+      const section2 = isClawd
+        ? `Section 2: Why this matters to someone holding the CLAWD token specifically. Use the chronicle context above to make this accurate and specific.`
+        : `Section 2: Who would actually find this useful and why — what kind of person or project would want to use this.`;
+
+      const abandonedSection = isAbandoned
+        ? `\nSection 5: This repo hasn't been updated in ${lastCommitDays} days. Give your best read on why it might have stopped — was it finished, replaced, or abandoned mid-build?`
+        : '';
+
+      prompt = `${personalityPrompt}
 
 ${clawdContext}Write these sections, each separated by a blank line:
 
@@ -155,7 +192,7 @@ Section 3: Whether it looks alive or abandoned based on the commit dates.
 Section 4: The last 3 commits. Write each as its own paragraph separated by a blank line. Start each with the date in brackets like [Jun 24, 2026] then explain what changed in one or two sentences.
 ${abandonedSection}
 
-Keep the whole thing under 350 words. Stay in character the entire time — do not break voice.
+Keep the whole thing under 350 words. Stay in character the entire time — do not break voice. Do not include any section headers, markdown, or labels in your response — just the paragraphs themselves.
 
 Repo name: ${repoData.name}
 Description: ${repoData.description || 'No description'}
@@ -168,6 +205,7 @@ ${readmeText}
 
 Last 3 commits:
 ${commits.map((c: any, i: number) => `${i + 1}. "${c.message}" — ${c.date}`).join('\n')}`;
+    }
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',

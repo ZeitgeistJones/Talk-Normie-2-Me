@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAccount, useReadContract } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Providers } from './providers';
@@ -36,15 +36,15 @@ const MODES: { id: PersonalityMode; label: string; emoji: string }[] = [
 // Per-mode font/style overrides applied to section text
 const MODE_TEXT_STYLE: Record<PersonalityMode, React.CSSProperties> = {
   normie:     { fontFamily: 'system-ui, sans-serif' },
-  fullnormie: { fontFamily: 'system-ui, sans-serif', fontSize: '15px', lineHeight: '1.8', letterSpacing: '0.01em' },
-  bro:        { fontFamily: '"Arial Black", "Impact", system-ui, sans-serif', fontWeight: 700, letterSpacing: '-0.01em' },
-  flirty:     { fontFamily: 'Georgia, "Palatino Linotype", serif', fontStyle: 'italic', lineHeight: '1.8' },
-  emo:        { fontFamily: '"Courier New", Courier, monospace', fontSize: '13px', lineHeight: '1.9', letterSpacing: '0.02em' },
-  brainrot:   { fontFamily: 'system-ui, sans-serif', letterSpacing: '0.03em', lineHeight: '1.75' },
-  sporty:     { fontFamily: '"Arial Black", Impact, system-ui, sans-serif', fontWeight: 800, lineHeight: '1.5', letterSpacing: '0.02em', textTransform: 'uppercase' as const, fontSize: '12px' },
-  otaku:      { fontFamily: 'system-ui, sans-serif', lineHeight: '1.9', letterSpacing: '0.04em' },
-  conspiracy: { fontFamily: '"Courier New", Courier, monospace', fontSize: '12.5px', lineHeight: '1.85', letterSpacing: '0.03em' },
-  poetry:     { fontFamily: 'Georgia, "Times New Roman", serif', fontStyle: 'italic', fontSize: '14px', lineHeight: '2', letterSpacing: '0.01em', whiteSpace: 'pre-wrap' as const },
+  fullnormie: { fontFamily: 'system-ui, sans-serif', fontSize: '15px', lineHeight: '1.9', letterSpacing: '0.01em' },
+  bro:        { fontFamily: '"Arial Black", "Impact", system-ui, sans-serif', fontWeight: 700, letterSpacing: '-0.01em', lineHeight: '1.5' },
+  flirty:     { fontFamily: 'Georgia, "Palatino Linotype", serif', fontStyle: 'italic', lineHeight: '1.85', fontSize: '14px' },
+  emo:        { fontFamily: '"Courier New", Courier, monospace', fontSize: '13px', lineHeight: '1.95', letterSpacing: '0.02em' },
+  brainrot:   { fontFamily: 'system-ui, sans-serif', letterSpacing: '0.03em', lineHeight: '1.8', fontSize: '13.5px' },
+  sporty:     { fontFamily: '"Arial Black", Impact, system-ui, sans-serif', fontWeight: 800, lineHeight: '1.45', letterSpacing: '0.02em', textTransform: 'uppercase' as const, fontSize: '12px' },
+  otaku:      { fontFamily: 'system-ui, sans-serif', lineHeight: '1.95', letterSpacing: '0.04em', fontSize: '13.5px' },
+  conspiracy: { fontFamily: '"Courier New", Courier, monospace', fontSize: '12.5px', lineHeight: '1.9', letterSpacing: '0.03em' },
+  poetry:     { fontFamily: 'Georgia, "Times New Roman", serif', fontStyle: 'normal', fontSize: '15px', lineHeight: '1.95', letterSpacing: '0.005em', whiteSpace: 'pre-wrap' as const },
 };
 
 // Per-mode section label style
@@ -58,14 +58,26 @@ const MODE_LABEL_STYLE: Record<PersonalityMode, React.CSSProperties> = {
   sporty:     { fontFamily: '"Arial Black", Impact, sans-serif', letterSpacing: '0.2em', fontSize: '9px' },
   otaku:      { letterSpacing: '0.18em' },
   conspiracy: { fontFamily: '"Courier New", monospace', letterSpacing: '0.15em', fontSize: '9px' },
-  poetry:     { fontFamily: 'Georgia, serif', textTransform: 'none' as const, fontStyle: 'italic', letterSpacing: '0.01em', fontSize: '11px' },
+  poetry:     { fontFamily: 'Georgia, serif', textTransform: 'none' as const, fontStyle: 'italic', letterSpacing: '0.01em', fontSize: '11px', opacity: 0.55 },
 };
 
+// Strip any leaked section headers from AI output
 function stripSectionLabel(text: string): string {
   return text
-    .replace(/^\*?\*?Section\s+\d+[:\s][^\n]*\*?\*?\s*/i, '')
-    .replace(/^\*\*[^*]+\*\*\s*/, '')
+    .replace(/^#+\s+[IVX]+\.\s+[^\n]*/gm, '')          // ## I. What It Is
+    .replace(/^\*?\*?Section\s+\d+[:\s][^\n]*\*?\*?\s*/i, '') // Section 1: ...
+    .replace(/^\*\*[^*]+\*\*\s*/, '')                   // **Bold header**
+    .replace(/^---+\s*/gm, '')                          // --- dividers
+    .replace(/^\s*\n/, '')
     .trim();
+}
+
+// For poetry: split on double newlines (stanza breaks), keep line breaks within
+function parsePoetryStanzas(text: string): string[] {
+  return text
+    .split(/\n{2,}/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && !s.match(/^#+\s/) && !s.match(/^---+$/));
 }
 
 type Repo = {
@@ -96,24 +108,156 @@ const SECTION_LABELS: Record<PersonalityMode, string[]> = {
   sporty:     ['THE PLAYBOOK', 'WHY IT WINS', 'GAME STATUS', 'RECENT PLAYS', 'FINAL WHISTLE'],
   otaku:      ['the lore', 'power level', 'arc status', 'episode recap', 'why it ended'],
   conspiracy: ['the cover story', 'the real reason', 'still active?', 'the trail', 'why it went dark'],
-  poetry:     ['the thing itself', 'why it matters', 'pulse', 'three moments', 'silence'],
+  poetry:     ['i.', 'ii.', 'iii.', 'iv.', 'v.'],
 };
+
+// ─── Share Card (canvas-based looseleaf image) ───────────────────────────────
+
+function useShareCard() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const generateCard = useCallback((
+    repoName: string,
+    hook: string,
+    mode: PersonalityMode,
+    modeEmoji: string
+  ): Promise<string> => {
+    return new Promise((resolve) => {
+      const W = 900, H = 540;
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d')!;
+
+      // Paper background — warm off-white with subtle texture
+      ctx.fillStyle = '#faf8f4';
+      ctx.fillRect(0, 0, W, H);
+
+      // Lined paper lines
+      ctx.strokeStyle = 'rgba(180,170,155,0.35)';
+      ctx.lineWidth = 1;
+      for (let y = 72; y < H - 40; y += 32) {
+        ctx.beginPath();
+        ctx.moveTo(60, y);
+        ctx.lineTo(W - 60, y);
+        ctx.stroke();
+      }
+
+      // Red margin line
+      ctx.strokeStyle = 'rgba(210,100,90,0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(108, 40);
+      ctx.lineTo(108, H - 40);
+      ctx.stroke();
+
+      // Punch holes
+      ctx.fillStyle = 'rgba(200,195,185,0.5)';
+      [120, H / 2, H - 120].forEach(y => {
+        ctx.beginPath();
+        ctx.arc(32, y, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(160,155,148,0.6)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      // App name — small, top right
+      ctx.font = '500 13px system-ui, sans-serif';
+      ctx.fillStyle = 'rgba(140,130,115,0.8)';
+      ctx.textAlign = 'right';
+      ctx.fillText('talk normie 2 me', W - 60, 52);
+
+      // Mode badge
+      ctx.textAlign = 'left';
+      ctx.font = '500 12px system-ui, sans-serif';
+      ctx.fillStyle = 'rgba(160,150,135,0.7)';
+      ctx.fillText(`${modeEmoji} ${mode}`, 128, 52);
+
+      // Repo name
+      ctx.font = 'bold 22px system-ui, sans-serif';
+      ctx.fillStyle = '#2a2218';
+      ctx.fillText(repoName, 128, 108);
+
+      // Divider
+      ctx.strokeStyle = 'rgba(180,170,155,0.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(128, 120);
+      ctx.lineTo(W - 60, 120);
+      ctx.stroke();
+
+      // Hook text — wrap at ~62 chars, handwriting-ish serif feel
+      const isPoetry = mode === 'poetry';
+      ctx.font = isPoetry ? `italic 17px Georgia, serif` : '15px system-ui, sans-serif';
+      ctx.fillStyle = '#3a3020';
+
+      const lines = hook.split('\n');
+      let y = 162;
+      const maxW = W - 190;
+
+      for (const rawLine of lines) {
+        if (rawLine.trim() === '') { y += 20; continue; }
+        // word wrap
+        const words = rawLine.split(' ');
+        let line = '';
+        for (const word of words) {
+          const test = line ? line + ' ' + word : word;
+          const m = ctx.measureText(test);
+          if (m.width > maxW && line) {
+            ctx.fillText(line, 128, y);
+            line = word;
+            y += 32;
+          } else {
+            line = test;
+          }
+        }
+        if (line) { ctx.fillText(line, 128, y); y += 32; }
+      }
+
+      // URL — bottom, subtle
+      ctx.font = '500 12px "Courier New", monospace';
+      ctx.fillStyle = 'rgba(150,140,125,0.8)';
+      ctx.fillText('talk-normie-2-me.vercel.app', 128, H - 56);
+
+      resolve(canvas.toDataURL('image/png'));
+    });
+  }, []);
+
+  return { generateCard };
+}
+
+// ─── Share Button ─────────────────────────────────────────────────────────────
 
 function ShareButton({ result, mode, dark }: { result: any; mode: PersonalityMode; dark: boolean }) {
   const [copied, setCopied] = useState(false);
+  const { generateCard } = useShareCard();
+  const currentMode = MODES.find(m => m.id === mode)!;
 
-  function buildTweet() {
-    const hook = result.shareHook || `just explained ${result.meta?.name} on Talk Normie 2 Me`;
+  async function handleShare() {
+    const hook = result.shareHook || `explained ${result.meta?.name} on Talk Normie 2 Me`;
     const appUrl = 'https://talk-normie-2-me.vercel.app';
-    const repoUrl = result.repoUrl || '';
-    return `${hook}\n\n${appUrl}\n\n(repo: ${repoUrl})`;
-  }
 
-  function handleShare() {
-    const tweet = buildTweet();
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweet)}`;
-    navigator.clipboard.writeText(tweet).catch(() => {});
-    window.open(twitterUrl, '_blank', 'width=600,height=400');
+    // Generate the card image
+    const dataUrl = await generateCard(
+      result.meta?.name || 'repo',
+      hook,
+      mode,
+      currentMode.emoji
+    );
+
+    // Tweet text — clean, no repo link
+    const tweetText = `${hook}\n\n${appUrl}`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+
+    // Also trigger image download so they can attach it
+    const link = document.createElement('a');
+    link.download = `tn2m-${result.meta?.name || 'card'}.png`;
+    link.href = dataUrl;
+    link.click();
+
+    navigator.clipboard.writeText(tweetText).catch(() => {});
+    setTimeout(() => window.open(twitterUrl, '_blank', 'width=600,height=400'), 300);
+
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   }
@@ -122,12 +266,36 @@ function ShareButton({ result, mode, dark }: { result: any; mode: PersonalityMod
     <button
       onClick={handleShare}
       className={dark ? styles.shareBtnDark : styles.shareBtnLight}
-      title="Share on X"
+      title="Download card + share on X"
     >
-      {copied ? '✓ copied' : '𝕏 share'}
+      {copied ? '✓ card saved' : '𝕏 share'}
     </button>
   );
 }
+
+// ─── Poetry Result View ───────────────────────────────────────────────────────
+
+function PoetryView({ explanation, dark }: { explanation: string; dark: boolean }) {
+  const stanzas = parsePoetryStanzas(explanation);
+  const labels = SECTION_LABELS.poetry;
+
+  return (
+    <div className={dark ? styles.poetryBodyDark : styles.poetryBodyLight}>
+      {stanzas.map((stanza, i) => (
+        <div key={i} className={dark ? styles.poetryStanzaDark : styles.poetryStanzaLight}>
+          <span className={dark ? styles.poetryNumeralDark : styles.poetryNumeralLight}>
+            {labels[i] ?? labels[labels.length - 1]}
+          </span>
+          <p className={dark ? styles.poetryTextDark : styles.poetryTextLight}>
+            {stanza}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
 
 function App() {
   const [url, setUrl] = useState('');
@@ -143,7 +311,7 @@ function App() {
   const [useCount, setUseCount] = useState(0);
   const [showWall, setShowWall] = useState(false);
   const [mode, setMode] = useState<PersonalityMode>('normie');
-  const cache: Record<string, any> = {};
+  const cache = useRef<Record<string, any>>({});
 
   const { address, isConnected } = useAccount();
 
@@ -208,7 +376,7 @@ function App() {
     }
 
     const cacheKey = `${target}__${mode}`;
-    if (cache[cacheKey]) { setResult(cache[cacheKey]); return; }
+    if (cache.current[cacheKey]) { setResult(cache.current[cacheKey]); return; }
     setLoading(true); setError(''); setResult(null);
 
     if (!isUnlocked) {
@@ -225,13 +393,14 @@ function App() {
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      cache[cacheKey] = data;
+      cache.current[cacheKey] = data;
       setResult(data);
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
   }
 
-  const sections = result?.explanation
+  // Parse sections for non-poetry modes
+  const sections = result?.explanation && mode !== 'poetry'
     ? result.explanation
         .split('\n')
         .reduce((acc: string[][], line: string) => {
@@ -244,7 +413,7 @@ function App() {
           return acc;
         }, [[]])
         .filter((s: string[]) => s.length > 0)
-        .map((s: string[]) => stripSectionLabel(s.join(mode === 'poetry' ? '\n' : ' ')))
+        .map((s: string[]) => stripSectionLabel(s.join(' ')))
         .filter((s: string) => s.length > 0)
     : [];
 
@@ -264,6 +433,16 @@ function App() {
     sporty:     'Warming up...',
     otaku:      'Entering the arc...',
     poetry:     'Dipping the pen...',
+  };
+
+  // Mode-specific result container styles
+  const getModeResultClass = () => {
+    if (mode === 'poetry') return dark ? styles.resultPoetryDark : styles.resultPoetryLight;
+    if (mode === 'emo') return dark ? styles.resultEmoDark : styles.resultEmoLight;
+    if (mode === 'conspiracy') return dark ? styles.resultConspiracyDark : styles.resultConspiracyLight;
+    if (mode === 'bro') return dark ? styles.resultBroDark : styles.resultBroLight;
+    if (mode === 'sporty') return dark ? styles.resultSportyDark : styles.resultSportyLight;
+    return dark ? styles.resultDark : styles.resultLight;
   };
 
   return (
@@ -391,40 +570,56 @@ function App() {
         )}
 
         {result && !showWall && (
-          <div className={dark ? styles.resultDark : styles.resultLight}>
-            <div className={dark ? styles.resultTopDark : styles.resultTopLight}>
-              <span className={dark ? styles.resultNameDark : styles.resultNameLight}>{result.meta?.name}</span>
-              {result.meta?.language && <span className={dark ? styles.badgeDark : styles.badgeLight}>{result.meta.language}</span>}
+          <div className={getModeResultClass()}>
+            {/* Result header */}
+            <div className={mode === 'poetry'
+              ? (dark ? styles.resultTopPoetryDark : styles.resultTopPoetryLight)
+              : (dark ? styles.resultTopDark : styles.resultTopLight)
+            }>
+              <span className={dark ? styles.resultNameDark : styles.resultNameLight}>
+                {result.meta?.name}
+              </span>
+              {result.meta?.language && (
+                <span className={dark ? styles.badgeDark : styles.badgeLight}>
+                  {result.meta.language}
+                </span>
+              )}
               {mode !== 'normie' && (
                 <span className={dark ? styles.modeBadgeDark : styles.modeBadgeLight}>
                   {currentMode.emoji} {currentMode.label}
                 </span>
               )}
-              {result.meta?.updatedAt && (
+              {result.meta?.updatedAt && mode !== 'poetry' && (
                 <span className={dark ? styles.resultDateDark : styles.resultDateLight}>
                   updated {new Date(result.meta.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
               )}
               <ShareButton result={result} mode={mode} dark={dark} />
             </div>
-            <div className={styles.resultBody}>
-              {sections.map((section: string, i: number) => (
-                <div key={i} className={dark ? styles.sectionDark : styles.sectionLight}>
-                  <div
-                    className={dark ? styles.sectionLabelDark : styles.sectionLabelLight}
-                    style={labelStyle}
-                  >
-                    {labels[i] ?? labels[labels.length - 1]}
+
+            {/* Poetry mode gets its own renderer */}
+            {mode === 'poetry' ? (
+              <PoetryView explanation={result.explanation} dark={dark} />
+            ) : (
+              <div className={styles.resultBody}>
+                {sections.map((section: string, i: number) => (
+                  <div key={i} className={dark ? styles.sectionDark : styles.sectionLight}>
+                    <div
+                      className={dark ? styles.sectionLabelDark : styles.sectionLabelLight}
+                      style={labelStyle}
+                    >
+                      {labels[i] ?? labels[labels.length - 1]}
+                    </div>
+                    <div
+                      className={dark ? styles.sectionTextDark : styles.sectionTextLight}
+                      style={textStyle}
+                    >
+                      {section}
+                    </div>
                   </div>
-                  <div
-                    className={dark ? styles.sectionTextDark : styles.sectionTextLight}
-                    style={textStyle}
-                  >
-                    {section}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -440,7 +635,7 @@ function App() {
 }
 
 export default function Home() {
-  const [dark, setDark] = useState(false);
+  const [dark] = useState(false);
   return (
     <Providers dark={dark}>
       <App />
