@@ -452,7 +452,7 @@ function PoetryView({ explanation, dark }: { explanation: string; dark: boolean 
   );
 }
 
-function App() {
+function App({ dark, setDark }: { dark: boolean; setDark: React.Dispatch<React.SetStateAction<boolean>> }) {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -462,7 +462,6 @@ function App() {
   const [browseOpen, setBrowseOpen] = useState(false);
   const [activeRepo, setActiveRepo] = useState('');
   const [search, setSearch] = useState('');
-  const [dark, setDark] = useState(false);
   const [useCount, setUseCount] = useState(0);
   const [showWall, setShowWall] = useState(false);
   const [mode, setMode] = useState<PersonalityMode>('normie');
@@ -680,7 +679,6 @@ function App() {
   };
 
   return (
-    <Providers dark={dark}>
     <main className={dark ? styles.mainDark : styles.mainLight}>
       <div className={styles.container} data-mode={mode} data-theme={dark ? 'dark' : 'light'}>
         <div className={styles.header}>
@@ -939,10 +937,18 @@ function App() {
         )}
       </div>
     </main>
+  );
+}
+
+function AppShell() {
+  const [dark, setDark] = useState(false);
+  return (
+    <Providers dark={dark}>
+      <App dark={dark} setDark={setDark} />
     </Providers>
   );
 }
 
 export default function Home() {
-  return <App />;
+  return <AppShell />;
 }
