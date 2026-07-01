@@ -239,6 +239,10 @@ function getModeCTA(mode: PersonalityMode): string {
   }
 }
 
+function canNativeShare(): boolean {
+  return typeof navigator !== 'undefined' && 'share' in navigator;
+}
+
 function buildSharePayload(result: any, mode: PersonalityMode): ShareCardPayload {
   const explanation = String(result?.explanation || '').trim();
 
@@ -333,7 +337,7 @@ function ShareButton({ result, mode, dark }: { result: any; mode: PersonalityMod
   }
 
   async function nativeShare() {
-    if (!previewBlob || !navigator.share) return;
+    if (!previewBlob || !canNativeShare()) return;
     const file = new File([previewBlob], `tn2m-${mode}-${result?.meta?.name || 'card'}.png`, {
       type: 'image/png',
     });
@@ -378,7 +382,7 @@ function ShareButton({ result, mode, dark }: { result: any; mode: PersonalityMod
               >
                 Download PNG
               </button>
-              {typeof navigator !== 'undefined' && navigator.share && previewBlob && (
+              {canNativeShare() && previewBlob && (
                 <button
                   className={dark ? styles.modalBtnSecondaryDark : styles.modalBtnSecondaryLight}
                   onClick={nativeShare}
