@@ -58,7 +58,7 @@
 
 /* ── Share button ────────────────────────────────────────────────────────── */
 .shareBtnLight {
-  margin-left: auto; font-size: 11px; padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; padding: 3px 10px; border-radius: 20px;
   border: 0.5px solid #e0e0e0; background: #fff; color: #555;
   cursor: pointer; font-family: inherit; transition: all 0.15s;
   white-space: nowrap;
@@ -66,12 +66,30 @@
 .shareBtnLight:hover { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
 
 .shareBtnDark {
-  margin-left: auto; font-size: 11px; padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; padding: 3px 10px; border-radius: 20px;
   border: 0.5px solid #333; background: #111; color: #888;
   cursor: pointer; font-family: inherit; transition: all 0.15s;
   white-space: nowrap;
 }
 .shareBtnDark:hover { background: #fff; color: #0a0a0a; border-color: #fff; }
+
+.copyBtnLight {
+  font-size: 11px; padding: 3px 10px; border-radius: 20px;
+  border: 0.5px solid #e0e0e0; background: #fff; color: #555;
+  cursor: pointer; font-family: inherit; transition: all 0.15s;
+  white-space: nowrap;
+}
+.copyBtnLight:hover { background: #f0f0f0; }
+
+.copyBtnDark {
+  font-size: 11px; padding: 3px 10px; border-radius: 20px;
+  border: 0.5px solid #333; background: #111; color: #888;
+  cursor: pointer; font-family: inherit; transition: all 0.15s;
+  white-space: nowrap;
+}
+.copyBtnDark:hover { background: #1a1a1a; color: #ccc; }
+
+.resultActions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
 
 /* ── Search row ──────────────────────────────────────────────────────────── */
 .searchRow { display: flex; gap: 8px; margin-bottom: 1.5rem; }
@@ -156,6 +174,88 @@
   margin-bottom: 1.5rem;
   padding: 0;
 }
+
+/* ── Flirty / Brainrot / Otaku / LinkedIn / Grandma / Full Normie ───────── */
+.resultFlirtyLight { border: 1px solid rgba(200,130,145,0.45); border-radius: 12px; overflow: hidden; background: #fff8f8; margin-bottom: 1.5rem; box-shadow: inset 0 0 0 1px rgba(200,130,145,0.15); }
+.resultFlirtyDark { border: 1px solid rgba(200,130,145,0.35); border-radius: 12px; overflow: hidden; background: #1a1012; margin-bottom: 1.5rem; }
+
+.resultBrainrotLight { border: 2px solid #000; border-radius: 12px; overflow: hidden; background: #fff; margin-bottom: 1.5rem; }
+.resultBrainrotDark { border: 2px solid #fff; border-radius: 12px; overflow: hidden; background: #0a0a0a; margin-bottom: 1.5rem; }
+
+.resultOtakuLight { border: 3px solid #1a1a1a; border-radius: 4px; overflow: hidden; background: #fff; margin-bottom: 1.5rem; }
+.resultOtakuDark { border: 3px solid #fff; border-radius: 4px; overflow: hidden; background: #111; margin-bottom: 1.5rem; }
+
+.resultLinkedinLight { border: 0.5px solid #d0d7de; border-radius: 8px; overflow: hidden; background: #f3f6f8; margin-bottom: 1.5rem; border-top: 3px solid #0a66c2; }
+.resultLinkedinDark { border: 0.5px solid #1a3044; border-radius: 8px; overflow: hidden; background: #0a1018; margin-bottom: 1.5rem; border-top: 3px solid #0a66c2; }
+
+.resultGrandmaLight { border: 1px solid rgba(180,140,100,0.35); border-radius: 12px; overflow: hidden; background: #fffaf5; margin-bottom: 1.5rem; }
+.resultGrandmaDark { border: 1px solid rgba(180,140,100,0.25); border-radius: 12px; overflow: hidden; background: #141008; margin-bottom: 1.5rem; }
+
+.resultFullnormieLight { border: 0.5px solid #e8e8e8; border-radius: 12px; overflow: hidden; background: #fff; margin-bottom: 1.5rem; }
+.resultFullnormieDark { border: 0.5px solid #222; border-radius: 12px; overflow: hidden; background: #111; margin-bottom: 1.5rem; }
+
+.badgeAbandonedLight { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #fdf0ef; color: #c0392b; border: 0.5px solid #f5c6c2; }
+.badgeAbandonedDark { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #1a0a0a; color: #ff6b6b; border: 0.5px solid #3a1a1a; }
+.badgeActiveLight { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #f0fdf4; color: #16a34a; border: 0.5px solid #bbf7d0; }
+.badgeActiveDark { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #0a1a0a; color: #4ade80; border: 0.5px solid #1a3a1a; }
+
+.hookLight { padding: 14px 16px; font-size: 14px; line-height: 1.6; color: #555; border-bottom: 0.5px solid #f0f0f0; font-style: italic; }
+.hookDark { padding: 14px 16px; font-size: 14px; line-height: 1.6; color: #aaa; border-bottom: 0.5px solid #1a1a1a; font-style: italic; }
+.hookFlirtyLight { padding: 14px 16px; font-family: Georgia, serif; font-style: italic; font-size: 14px; color: #5a2535; background: rgba(200,130,145,0.08); border-bottom: 0.5px solid rgba(200,130,145,0.2); line-height: 1.65; }
+.hookFlirtyDark { padding: 14px 16px; font-family: Georgia, serif; font-style: italic; font-size: 14px; color: #c08090; background: rgba(200,130,145,0.08); border-bottom: 0.5px solid rgba(200,130,145,0.15); line-height: 1.65; }
+.hookLinkedinLight { padding: 14px 16px; font-size: 14px; color: #1a1a1a; background: rgba(10,102,194,0.06); border-bottom: 0.5px solid rgba(10,102,194,0.15); line-height: 1.65; }
+.hookLinkedinDark { padding: 14px 16px; font-size: 14px; color: #ccc; background: rgba(10,102,194,0.1); border-bottom: 0.5px solid rgba(10,102,194,0.2); line-height: 1.65; }
+.hookGrandmaLight { padding: 14px 16px; font-family: Georgia, serif; font-size: 15px; color: #5a4030; background: rgba(180,140,100,0.08); border-bottom: 0.5px solid rgba(180,140,100,0.2); line-height: 1.7; }
+.hookGrandmaDark { padding: 14px 16px; font-family: Georgia, serif; font-size: 15px; color: #c0a080; background: rgba(180,140,100,0.08); border-bottom: 0.5px solid rgba(180,140,100,0.15); line-height: 1.7; }
+.hookConspiracyLight { padding: 14px 16px; font-family: "Courier New", monospace; font-size: 13px; color: #3a3a30; background: rgba(255,254,248,0.8); border-bottom: 0.5px solid #ccc; line-height: 1.65; }
+.hookConspiracyDark { padding: 14px 16px; font-family: "Courier New", monospace; font-size: 13px; color: #aaa; background: rgba(10,10,6,0.8); border-bottom: 0.5px solid #2a2a1a; line-height: 1.65; }
+
+.reexplainBarLight { padding: 10px 16px; background: #f8f8f8; border-bottom: 0.5px solid #f0f0f0; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #888; flex-wrap: wrap; }
+.reexplainBarDark { padding: 10px 16px; background: #0e0e0e; border-bottom: 0.5px solid #1a1a1a; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #666; flex-wrap: wrap; }
+.reexplainBtnLight { font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 0.5px solid #ddd; background: #fff; color: #1a1a1a; cursor: pointer; font-family: inherit; }
+.reexplainBtnLight:hover { background: #1a1a1a; color: #fff; }
+.reexplainBtnDark { font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 0.5px solid #444; background: #111; color: #ddd; cursor: pointer; font-family: inherit; }
+.reexplainBtnDark:hover { background: #fff; color: #0a0a0a; }
+
+.modalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+.modalCardLight { background: #fff; border-radius: 12px; max-width: 520px; width: 100%; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.modalCardDark { background: #111; border-radius: 12px; max-width: 520px; width: 100%; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 0.5px solid #333; }
+.modalHeaderLight { padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 0.5px solid #f0f0f0; font-size: 14px; font-weight: 500; }
+.modalHeaderDark { padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 0.5px solid #222; font-size: 14px; font-weight: 500; color: #e0e0e0; }
+.modalImage { width: 100%; display: block; }
+.modalActions { padding: 12px 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+.modalBtnPrimaryLight { padding: 8px 16px; border-radius: 8px; border: none; background: #1a1a1a; color: #fff; font-size: 13px; cursor: pointer; font-family: inherit; }
+.modalBtnPrimaryDark { padding: 8px 16px; border-radius: 8px; border: none; background: #fff; color: #0a0a0a; font-size: 13px; cursor: pointer; font-family: inherit; }
+.modalBtnSecondaryLight { padding: 8px 16px; border-radius: 8px; border: 0.5px solid #ddd; background: #fff; color: #555; font-size: 13px; cursor: pointer; font-family: inherit; }
+.modalBtnSecondaryDark { padding: 8px 16px; border-radius: 8px; border: 0.5px solid #333; background: #111; color: #aaa; font-size: 13px; cursor: pointer; font-family: inherit; }
+
+/* ── Personality mode accents ─────────────────────────────────────────────── */
+.container[data-mode="flirty"][data-theme="light"] { --mode-accent: #c08090; }
+.container[data-mode="flirty"][data-theme="light"] .modeWordLight { color: #8a4055; border-bottom-color: #c08090; }
+.container[data-mode="flirty"][data-theme="dark"] .modeWordDark { color: #c08090; border-bottom-color: #8a5060; }
+
+.container[data-mode="linkedin"][data-theme="light"] .modeWordLight { color: #0a66c2; border-bottom-color: #0a66c2; }
+.container[data-mode="linkedin"][data-theme="dark"] .modeWordDark { color: #5a9fd4; border-bottom-color: #0a66c2; }
+
+.container[data-mode="grandma"][data-theme="light"] .modeWordLight { color: #8a6a50; border-bottom-color: #c0a080; font-family: Georgia, serif; font-style: italic; }
+.container[data-mode="grandma"][data-theme="dark"] .modeWordDark { color: #c0a080; border-bottom-color: #8a6a50; font-family: Georgia, serif; font-style: italic; }
+
+.container[data-mode="bro"][data-theme="light"] .buttonLight { box-shadow: 2px 2px 0 #1a1a1a; }
+.container[data-mode="bro"][data-theme="dark"] .buttonDark { box-shadow: 2px 2px 0 #fff; }
+
+.container[data-mode="conspiracy"][data-theme="light"] .mainLight { background: #fffef8; }
+.container[data-mode="conspiracy"][data-theme="light"] .taglineLight { font-family: "Courier New", monospace; font-size: 12px; }
+
+.container[data-mode="sporty"][data-theme="light"] .inputLight { border-left: 3px solid #1a1a1a; border-radius: 0; }
+.container[data-mode="sporty"][data-theme="light"] .taglineLight { text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
+
+.container[data-mode="brainrot"][data-theme="light"] .modeWordLight { font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.container[data-mode="otaku"][data-theme="light"] .modeWordLight { color: #5a3a8a; border-bottom-color: #8a6abf; }
+
+.container[data-mode="poetry"][data-theme="light"] .taglineLight { font-family: Georgia, serif; font-style: italic; }
+
+.container[data-mode="emo"][data-theme="light"] { border-top: 2px solid #444; padding-top: 4px; }
 
 /* ── Result top bar ──────────────────────────────────────────────────────── */
 .resultTopLight { padding: 12px 16px; border-bottom: 0.5px solid #f0f0f0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

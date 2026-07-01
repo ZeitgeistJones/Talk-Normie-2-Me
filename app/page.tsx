@@ -33,6 +33,8 @@ type PersonalityMode =
   | 'brainrot'
   | 'sporty'
   | 'otaku'
+  | 'linkedin'
+  | 'grandma'
   | 'poetry';
 
 type ShareCardPayload = {
@@ -42,9 +44,60 @@ type ShareCardPayload = {
   whatIsIt: string;
   example: string;
   status: string;
+  recentActivity?: string;
   cta: string;
   url: string;
+  language?: string;
+  stars?: number;
+  updatedAt?: string;
+  repoUrl?: string;
 };
+
+const CACHE_STORAGE_KEY = 'tn2m_cache';
+const MODE_STORAGE_KEY = 'tn2m_mode';
+const MAX_CACHE_ENTRIES = 20;
+
+type CacheEntry = {
+  explanation: string;
+  shareHook: string;
+  repoUrl: string;
+  meta: Record<string, unknown>;
+};
+
+function normalizeUrl(url: string): string {
+  return url.trim().replace(/\/$/, '').replace(/\.git$/, '');
+}
+
+function loadCacheFromStorage(): Record<string, CacheEntry> {
+  try {
+    const raw = localStorage.getItem(CACHE_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCacheToStorage(cache: Record<string, CacheEntry>) {
+  const entries = Object.entries(cache);
+  const trimmed =
+    entries.length > MAX_CACHE_ENTRIES
+      ? Object.fromEntries(entries.slice(entries.length - MAX_CACHE_ENTRIES))
+      : cache;
+  localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(trimmed));
+}
+
+async function isCacheStale(url: string, sha?: string): Promise<boolean> {
+  if (!sha) return true;
+  try {
+    const res = await fetch(
+      `/api/repo-stale?url=${encodeURIComponent(url)}&sha=${encodeURIComponent(sha)}`
+    );
+    const data = await res.json();
+    return Boolean(data.stale);
+  } catch {
+    return true;
+  }
+}
 
 const MODES: { id: PersonalityMode; label: string; emoji: string }[] = [
   { id: 'normie', label: 'Normie', emoji: '💬' },
@@ -55,6 +108,8 @@ const MODES: { id: PersonalityMode; label: string; emoji: string }[] = [
   { id: 'brainrot', label: 'Brainrot', emoji: '🫠' },
   { id: 'sporty', label: 'Sporty', emoji: '🏆' },
   { id: 'otaku', label: 'Otaku', emoji: '⚡' },
+  { id: 'linkedin', label: 'LinkedIn', emoji: '🫡' },
+  { id: 'grandma', label: 'Grandma', emoji: '🧶' },
   { id: 'conspiracy', label: 'Conspiracy', emoji: '🕵️' },
   { id: 'poetry', label: 'Poetry', emoji: '🪶' },
 ];
@@ -75,6 +130,8 @@ const MODE_TEXT_STYLE: Record<PersonalityMode, React.CSSProperties> = {
     fontSize: '12px',
   },
   otaku: { fontFamily: 'system-ui, sans-serif', lineHeight: '1.95', letterSpacing: '0.04em', fontSize: '13.5px' },
+  linkedin: { fontFamily: 'system-ui, sans-serif', lineHeight: '1.75', fontSize: '14.5px', letterSpacing: '0.01em' },
+  grandma: { fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: '1.9', fontSize: '15px', letterSpacing: '0.01em' },
   conspiracy: { fontFamily: '"Courier New", Courier, monospace', fontSize: '12.5px', lineHeight: '1.9', letterSpacing: '0.03em' },
   poetry: {
     fontFamily: 'Georgia, "Times New Roman", serif',
@@ -95,6 +152,8 @@ const MODE_LABEL_STYLE: Record<PersonalityMode, React.CSSProperties> = {
   brainrot: { letterSpacing: '0.1em' },
   sporty: { fontFamily: '"Arial Black", Impact, sans-serif', letterSpacing: '0.2em', fontSize: '9px' },
   otaku: { letterSpacing: '0.18em' },
+  linkedin: { letterSpacing: '0.06em', fontSize: '10px', color: '#0a66c2' },
+  grandma: { fontFamily: 'Georgia, serif', textTransform: 'none', fontStyle: 'italic', letterSpacing: '0.02em', fontSize: '11px' },
   conspiracy: { fontFamily: '"Courier New", monospace', letterSpacing: '0.15em', fontSize: '9px' },
   poetry: { fontFamily: 'Georgia, serif', textTransform: 'none', fontStyle: 'italic', letterSpacing: '0.01em', fontSize: '11px', opacity: 0.55 },
 };
@@ -108,6 +167,8 @@ const SECTION_LABELS: Record<PersonalityMode, string[]> = {
   brainrot: ['the lore', 'why it bussin', 'still alive fr?', 'recent glazing', 'why it flopped', 'what is this app'],
   sporty: ['THE PLAYBOOK', 'WHY IT WINS', 'GAME STATUS', 'RECENT PLAYS', 'FINAL WHISTLE', 'THE PROGRAM'],
   otaku: ['the lore', 'power level', 'arc status', 'episode recap', 'why it ended', 'what is this'],
+  linkedin: ['the thesis', 'who this serves', 'momentum check', 'recent wins', 'why the arc paused', 'grateful plug'],
+  grandma: ['what it is, dear', 'who needs this', 'still going?', 'recent news', 'where it went', 'what is this website'],
   conspiracy: ['the cover story', 'the real reason', 'still active?', 'the trail', 'why it went dark', 'what is this operation'],
   poetry: ['i.', 'ii.', 'iii.', 'iv.', 'v.'],
 };
@@ -166,6 +227,10 @@ function getModeCTA(mode: PersonalityMode): string {
       return 'watch the full tape at';
     case 'otaku':
       return 'continue the arc at';
+    case 'linkedin':
+      return 'read the full breakdown at';
+    case 'grandma':
+      return 'see the whole explanation at';
     case 'fullnormie':
       return 'see the simple version at';
     case 'normie':
@@ -203,6 +268,7 @@ function buildSharePayload(result: any, mode: PersonalityMode): ShareCardPayload
   const example = proseSections[1] || proseSections[0] || explanation || result?.shareHook || '';
 
   const status = proseSections[2] || '';
+  const recentActivity = proseSections[3] || '';
 
   return {
     repoName: result?.meta?.name || 'repo',
@@ -211,36 +277,155 @@ function buildSharePayload(result: any, mode: PersonalityMode): ShareCardPayload
     whatIsIt,
     example,
     status,
+    recentActivity,
     cta: getModeCTA(mode),
-    url: 'talk-normie-2-me.vercel.app',
+    url: 'https://talk-normie-2-me.vercel.app',
+    language: result?.meta?.language,
+    stars: result?.meta?.stars,
+    updatedAt: result?.meta?.updatedAt,
+    repoUrl: result?.repoUrl,
   };
+}
+
+function buildCopyText(result: any, mode: PersonalityMode, sections: string[]): string {
+  const labels = SECTION_LABELS[mode];
+  const lines: string[] = [];
+  if (result?.shareHook) lines.push(result.shareHook, '');
+  sections.forEach((section, i) => {
+    lines.push(`${labels[i] ?? labels[labels.length - 1]}`, section, '');
+  });
+  if (result?.repoUrl) lines.push(result.repoUrl);
+  lines.push('https://talk-normie-2-me.vercel.app');
+  return lines.join('\n');
 }
 
 function ShareButton({ result, mode, dark }: { result: any; mode: PersonalityMode; dark: boolean }) {
   const [saved, setSaved] = useState(false);
+  const [building, setBuilding] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
 
   async function handleShare() {
+    setBuilding(true);
     const payload = buildSharePayload(result, mode);
     const dataUrl = await generateShareCard(payload);
-
+    setBuilding(false);
     if (!dataUrl) return;
 
-    const link = document.createElement('a');
-    link.download = `tn2m-${mode}-${payload.repoName || 'card'}.png`;
-    link.href = dataUrl;
-    link.click();
+    setPreviewUrl(dataUrl);
+    const res = await fetch(dataUrl);
+    setPreviewBlob(await res.blob());
+  }
 
+  function closePreview() {
+    setPreviewUrl(null);
+    setPreviewBlob(null);
+  }
+
+  function downloadImage() {
+    if (!previewUrl) return;
+    const link = document.createElement('a');
+    link.download = `tn2m-${mode}-${result?.meta?.name || 'card'}.png`;
+    link.href = previewUrl;
+    link.click();
     setSaved(true);
     setTimeout(() => setSaved(false), 2200);
   }
 
+  async function nativeShare() {
+    if (!previewBlob || !navigator.share) return;
+    const file = new File([previewBlob], `tn2m-${mode}-${result?.meta?.name || 'card'}.png`, {
+      type: 'image/png',
+    });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: `${result?.meta?.name} — Talk Normie 2 Me`,
+      });
+    }
+  }
+
+  const currentMode = MODES.find((m) => m.id === mode)!;
+
+  return (
+    <>
+      <button
+        onClick={handleShare}
+        className={dark ? styles.shareBtnDark : styles.shareBtnLight}
+        title="Preview and save share image"
+        disabled={building}
+      >
+        {building ? 'building card...' : saved ? '✓ saved image' : 'save image'}
+      </button>
+
+      {previewUrl && (
+        <div className={styles.modalOverlay} onClick={closePreview}>
+          <div
+            className={dark ? styles.modalCardDark : styles.modalCardLight}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={dark ? styles.modalHeaderDark : styles.modalHeaderLight}>
+              <span>{result?.meta?.name}</span>
+              <span className={dark ? styles.modeBadgeDark : styles.modeBadgeLight}>
+                {currentMode.emoji} {currentMode.label}
+              </span>
+            </div>
+            <img src={previewUrl} alt="Share card preview" className={styles.modalImage} />
+            <div className={styles.modalActions}>
+              <button
+                className={dark ? styles.modalBtnPrimaryDark : styles.modalBtnPrimaryLight}
+                onClick={downloadImage}
+              >
+                Download PNG
+              </button>
+              {typeof navigator !== 'undefined' && navigator.share && previewBlob && (
+                <button
+                  className={dark ? styles.modalBtnSecondaryDark : styles.modalBtnSecondaryLight}
+                  onClick={nativeShare}
+                >
+                  Share…
+                </button>
+              )}
+              <button
+                className={dark ? styles.modalBtnSecondaryDark : styles.modalBtnSecondaryLight}
+                onClick={closePreview}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function CopyButton({
+  result,
+  mode,
+  dark,
+  sections,
+}: {
+  result: any;
+  mode: PersonalityMode;
+  dark: boolean;
+  sections: string[];
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(buildCopyText(result, mode, sections));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   return (
     <button
-      onClick={handleShare}
-      className={dark ? styles.shareBtnDark : styles.shareBtnLight}
-      title="Save styled share image"
+      onClick={handleCopy}
+      className={dark ? styles.copyBtnDark : styles.copyBtnLight}
+      title="Copy explanation as text"
     >
-      {saved ? '✓ saved image' : 'save image'}
+      {copied ? '✓ copied' : 'copy text'}
     </button>
   );
 }
@@ -277,7 +462,9 @@ function App() {
   const [useCount, setUseCount] = useState(0);
   const [showWall, setShowWall] = useState(false);
   const [mode, setMode] = useState<PersonalityMode>('normie');
-  const cache = useRef<Record<string, any>>({});
+  const [activeUrl, setActiveUrl] = useState('');
+  const [needsReexplain, setNeedsReexplain] = useState(false);
+  const cache = useRef<Record<string, CacheEntry>>({});
 
   const { address, isConnected } = useAccount();
 
@@ -295,6 +482,11 @@ function App() {
   useEffect(() => {
     const stored = parseInt(localStorage.getItem('tn2m_uses') || '0', 10);
     setUseCount(stored);
+    cache.current = loadCacheFromStorage();
+    const storedMode = localStorage.getItem(MODE_STORAGE_KEY) as PersonalityMode | null;
+    if (storedMode && MODES.some((m) => m.id === storedMode)) {
+      setMode(storedMode);
+    }
   }, []);
 
   useEffect(() => {
@@ -333,29 +525,69 @@ function App() {
     const idx = MODES.findIndex((m) => m.id === mode);
     const next = MODES[(idx + 1) % MODES.length];
     setMode(next.id);
-    setResult(null);
+    localStorage.setItem(MODE_STORAGE_KEY, next.id);
+
+    if (!activeUrl) return;
+
+    const cacheKey = `${normalizeUrl(activeUrl)}__${next.id}`;
+    const cached = cache.current[cacheKey];
+    if (cached) {
+      void (async () => {
+        const stale = await isCacheStale(activeUrl, cached.meta?.latestCommitSha as string | undefined);
+        if (!stale) {
+          setResult(cached);
+          setNeedsReexplain(false);
+        } else {
+          delete cache.current[cacheKey];
+          saveCacheToStorage(cache.current);
+          setNeedsReexplain(true);
+        }
+      })();
+    } else {
+      setNeedsReexplain(true);
+    }
   }
 
-  async function handleSubmit(repoUrl?: string) {
+  async function tryLoadCache(target: string, personality: PersonalityMode): Promise<CacheEntry | null> {
+    const cacheKey = `${normalizeUrl(target)}__${personality}`;
+    const cached = cache.current[cacheKey];
+    if (!cached) return null;
+
+    const stale = await isCacheStale(target, cached.meta?.latestCommitSha as string | undefined);
+    if (stale) {
+      delete cache.current[cacheKey];
+      saveCacheToStorage(cache.current);
+      return null;
+    }
+    return cached;
+  }
+
+  async function handleSubmit(repoUrl?: string, force = false) {
     const target = repoUrl || url;
     if (!target.trim()) return;
 
-    if (!isUnlocked && useCount >= FREE_LIMIT) {
+    if (!isUnlocked && useCount >= FREE_LIMIT && !force) {
       setShowWall(true);
       return;
     }
 
-    const cacheKey = `${target}__${mode}`;
-    if (cache.current[cacheKey]) {
-      setResult(cache.current[cacheKey]);
-      return;
+    setActiveUrl(target);
+
+    if (!force) {
+      const cached = await tryLoadCache(target, mode);
+      if (cached) {
+        setResult(cached);
+        setNeedsReexplain(false);
+        return;
+      }
     }
 
     setLoading(true);
     setError('');
     setResult(null);
+    setNeedsReexplain(false);
 
-    if (!isUnlocked) {
+    if (!isUnlocked && !force) {
       const newCount = useCount + 1;
       setUseCount(newCount);
       localStorage.setItem('tn2m_uses', String(newCount));
@@ -371,7 +603,9 @@ function App() {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
+      const cacheKey = `${normalizeUrl(target)}__${mode}`;
       cache.current[cacheKey] = data;
+      saveCacheToStorage(cache.current);
       setResult(data);
     } catch (e: any) {
       setError(e.message || 'Something went wrong');
@@ -413,6 +647,8 @@ function App() {
     brainrot: 'Cooking fr fr...',
     sporty: 'Warming up...',
     otaku: 'Entering the arc...',
+    linkedin: 'Drafting a humble post...',
+    grandma: 'Putting on reading glasses...',
     poetry: 'Dipping the pen...',
   };
 
@@ -422,12 +658,27 @@ function App() {
     if (mode === 'conspiracy') return dark ? styles.resultConspiracyDark : styles.resultConspiracyLight;
     if (mode === 'bro') return dark ? styles.resultBroDark : styles.resultBroLight;
     if (mode === 'sporty') return dark ? styles.resultSportyDark : styles.resultSportyLight;
+    if (mode === 'flirty') return dark ? styles.resultFlirtyDark : styles.resultFlirtyLight;
+    if (mode === 'brainrot') return dark ? styles.resultBrainrotDark : styles.resultBrainrotLight;
+    if (mode === 'otaku') return dark ? styles.resultOtakuDark : styles.resultOtakuLight;
+    if (mode === 'linkedin') return dark ? styles.resultLinkedinDark : styles.resultLinkedinLight;
+    if (mode === 'grandma') return dark ? styles.resultGrandmaDark : styles.resultGrandmaLight;
+    if (mode === 'fullnormie') return dark ? styles.resultFullnormieDark : styles.resultFullnormieLight;
     return dark ? styles.resultDark : styles.resultLight;
   };
 
+  const getHookClass = () => {
+    if (mode === 'flirty') return dark ? styles.hookFlirtyDark : styles.hookFlirtyLight;
+    if (mode === 'linkedin') return dark ? styles.hookLinkedinDark : styles.hookLinkedinLight;
+    if (mode === 'grandma') return dark ? styles.hookGrandmaDark : styles.hookGrandmaLight;
+    if (mode === 'conspiracy') return dark ? styles.hookConspiracyDark : styles.hookConspiracyLight;
+    return dark ? styles.hookDark : styles.hookLight;
+  };
+
   return (
+    <Providers dark={dark}>
     <main className={dark ? styles.mainDark : styles.mainLight}>
-      <div className={styles.container}>
+      <div className={styles.container} data-mode={mode} data-theme={dark ? 'dark' : 'light'}>
         <div className={styles.header}>
           <div className={styles.logo}>
             <div className={dark ? styles.logoIconDark : styles.logoIconLight}>
@@ -540,7 +791,7 @@ function App() {
                   }`}
                   onClick={() => {
                     setActiveRepo(repo.url);
-                    setResult(null);
+                    setUrl(repo.url);
                     setError('');
                     handleSubmit(repo.url);
                     setBrowseOpen(false);
@@ -588,6 +839,28 @@ function App() {
                 </span>
               )}
 
+              {result.meta?.stars != null && result.meta.stars > 0 && (
+                <span className={dark ? styles.badgeDark : styles.badgeLight}>
+                  ★ {result.meta.stars}
+                </span>
+              )}
+
+              {result.meta?.isAbandoned != null && mode !== 'poetry' && (
+                <span
+                  className={
+                    result.meta.isAbandoned
+                      ? dark
+                        ? styles.badgeAbandonedDark
+                        : styles.badgeAbandonedLight
+                      : dark
+                      ? styles.badgeActiveDark
+                      : styles.badgeActiveLight
+                  }
+                >
+                  {result.meta.isAbandoned ? 'abandoned' : 'active'}
+                </span>
+              )}
+
               {mode !== 'normie' && (
                 <span className={dark ? styles.modeBadgeDark : styles.modeBadgeLight}>
                   {currentMode.emoji} {currentMode.label}
@@ -605,8 +878,28 @@ function App() {
                 </span>
               )}
 
-              <ShareButton result={result} mode={mode} dark={dark} />
+              <div className={styles.resultActions}>
+                <CopyButton result={result} mode={mode} dark={dark} sections={sections} />
+                <ShareButton result={result} mode={mode} dark={dark} />
+              </div>
             </div>
+
+            {needsReexplain && activeUrl && (
+              <div className={dark ? styles.reexplainBarDark : styles.reexplainBarLight}>
+                <span>Viewing a different personality —</span>
+                <button
+                  className={dark ? styles.reexplainBtnDark : styles.reexplainBtnLight}
+                  onClick={() => handleSubmit(activeUrl, true)}
+                  disabled={loading}
+                >
+                  Re-explain in {currentMode.label}
+                </button>
+              </div>
+            )}
+
+            {result.shareHook && mode !== 'poetry' && (
+              <div className={getHookClass()}>{result.shareHook}</div>
+            )}
 
             {mode === 'poetry' ? (
               <PoetryView explanation={result.explanation} dark={dark} />
@@ -642,15 +935,10 @@ function App() {
         )}
       </div>
     </main>
+    </Providers>
   );
 }
 
 export default function Home() {
-  const [dark] = useState(false);
-
-  return (
-    <Providers dark={dark}>
-      <App />
-    </Providers>
-  );
+  return <App />;
 }

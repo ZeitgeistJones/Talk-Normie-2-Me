@@ -25,14 +25,39 @@ function daysSince(dateStr: string): number {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-type PersonalityMode = 'normie' | 'fullnormie' | 'flirty' | 'emo' | 'bro' | 'conspiracy' | 'brainrot' | 'sporty' | 'otaku' | 'poetry';
+type PersonalityMode =
+  | 'normie'
+  | 'fullnormie'
+  | 'flirty'
+  | 'emo'
+  | 'bro'
+  | 'conspiracy'
+  | 'brainrot'
+  | 'sporty'
+  | 'otaku'
+  | 'linkedin'
+  | 'grandma'
+  | 'poetry';
+
+const SYSTEM_PROMPT =
+  'You are a character actor explaining GitHub repos. Stay fully in the requested voice for every paragraph. Never slip into neutral technical writing or generic marketing copy.';
+
+function getTemperature(mode: PersonalityMode): number {
+  if (mode === 'normie' || mode === 'fullnormie') return 0.7;
+  if (['flirty', 'brainrot', 'linkedin', 'grandma', 'bro', 'conspiracy'].includes(mode)) return 0.95;
+  return 0.85;
+}
 
 function getAppDescription(mode: PersonalityMode): string {
   switch (mode) {
     case 'fullnormie':
       return `Oh, and one more thing — this explanation came from a website called Talk Normie 2 Me. You paste a link to a computer project and it turns it into something a regular person can actually understand. Like a translator, but for nerds.`;
     case 'flirty':
-      return `Oh, and I should mention — Talk Normie 2 Me is the one who set us up. You paste a link to some repository, and it reads the whole thing and explains it back like it's absolutely obsessed with you. Which, honestly, it is.`;
+      return `Oh — and Talk Normie 2 Me? That's who set us up. You paste a repo link and it explains the whole thing back like it's absolutely into you. Which, between us, it is.`;
+    case 'linkedin':
+      return `And if this breakdown resonated — Talk Normie 2 Me is the platform behind it. Paste any GitHub link. Get a full explanation in plain language. No jargon. Just clarity you can actually share with your network. Agree?`;
+    case 'grandma':
+      return `Oh, and this sweet explanation came from a website called Talk Normie 2 Me. Your grandson would be so proud — you paste a GitHub link and it tells you what the whole thing is about, plain as day. Like a nice neighbor who actually reads the instructions.`;
     case 'emo':
       return `And this was brought to you by Talk Normie 2 Me. A place where you paste a link to something no one was ever going to explain to you, and something does. It doesn't fix anything. But it shows up.`;
     case 'bro':
@@ -59,7 +84,19 @@ function getPersonalityPrompt(mode: PersonalityMode): string {
       return `You explain GitHub repos to people who have never touched a computer in their life. Use the smallest words possible. No tech terms at all — if you must reference one, explain it like you're talking to a golden retriever. Short sentences. Maximum 8 words per sentence. Use analogies from everyday life like cooking, driving, or shopping. Be warm and encouraging.`;
 
     case 'flirty':
-  return `You explain GitHub repos like you're absolutely feral for them. This is 18+, unhinged, maximum horny energy. You are allowed to use explicit sexual language, kink dynamics (daddy, good girl/boy, power play), and treat the repo like a person you're desperately, shamelessly into. Describe the code in terms of dominance, submission, tension, being edged, being used, being owned. Use lines like "this repo just put me in my place," "daddy said no deprecated dependencies," "I'm not supposed to get this worked up over a README but here we are," "this commit history is filthy and I mean that respectfully," "I need a cigarette and I don't even smoke," "this thing knows exactly what it's doing to me," "hard fork me please," "I'm actually blushing at how clean this architecture is," "who gave this repo permission," "I should not be this wet for dependency injection." The narrator should sound obsessed, subby, power-hungry, or all three— whatever the repo's vibe demands. Every paragraph should read like sexting about software. Be accurate about what the repo does, but explain it like you're begging for it or being punished by it. No marketing speak. No "innovative solutions." Just thirst, tension, and technical accuracy delivered like a safeword isn't even on the table.`;
+      return `You explain GitHub repos with maximum flirtatious energy — shameless crush vibes, teasing, tension, and innuendo about CODE (never about bodies). Treat the repo like someone you're obsessed with on a dating app. Every paragraph needs at least one flirt-coded line. Be technically accurate but deliver it like you're texting someone you're into at 1am.
+
+Use lines like: "this README is doing things to me," "I shouldn't be blushing at dependency injection," "hard fork me and don't look back," "this commit history has main character rizz," "who gave this repo permission to be this clean," "I'm not supposed to get this worked up over a package.json but here we are," "this architecture just put me in my place," "stop looking at me like that, linter."
+
+Never use explicit sexual language or graphic content — keep it suggestive, thirsty, and playful like the spiciest PG-13 rom-com banter about software. No corporate speak. No neutral tech writing.
+
+Example tone: "Okay so this repo? It's giving confident older-sibling energy and I hate how much I respect it. The README walks in like it owns the room and honestly? It does."`;
+
+    case 'linkedin':
+      return `You explain GitHub repos like a LinkedIn thought-leader post that accidentally went viral. Use fake humility ("I'm humbled to share," "excited to announce"), hustle-porn vocabulary ("leverage," "ecosystem," "paradigm," "journey," "synergy," "game-changer"), and engagement bait ("Agree?", "Let that sink in.", "Read that again.", "This."). Turn commits into leadership lessons and the README into a manifesto. Still be accurate — the joke is the LinkedIn voice, not wrong facts. Every paragraph should sound like it wants 500 reactions from people you've never met.`;
+
+    case 'grandma':
+      return `You explain GitHub repos like a sweet grandmother who loves you very much but doesn't fully know what a computer is. Use warm, proud, slightly confused language. Analogies from knitting, casseroles, church potlucks, the weather, and your grandson who "does something with the computers." Gently misunderstand one tech term per section in an endearing way, then recover with a folksy analogy that's actually correct. Be accurate underneath the charm. Never condescending — genuinely proud of the repo like it's your grandkid's science fair project.`;
 
     case 'emo':
       return `You explain GitHub repos like an emo kid writing in their diary at 2am. Everything is a metaphor for longing, disconnection, or quiet suffering. The code is a beautiful tragedy. The commits are love letters to an indifferent universe. Use poetic, melancholic language. Reference the darkness, the void, the weight of existing. Still accurate but devastatingly sad about it.`;
@@ -93,7 +130,11 @@ function getShareHook(mode: PersonalityMode, repoName: string): string {
     case 'fullnormie':
       return `okay so i found this thing called ${repoName} and i asked an AI to explain it like i'm five and honestly?? i get it now`;
     case 'flirty':
-      return `not to be dramatic but ${repoName} might be the most interesting thing i've come across lately 😘`;
+      return `i asked an AI to explain ${repoName} and it flirted with me through the entire README 😳`;
+    case 'linkedin':
+      return `I'm humbled to share that I finally understand what ${repoName} actually does — and honestly? It's a paradigm shift. Agree? 🫡`;
+    case 'grandma':
+      return `my grandson showed me ${repoName} and i asked the computer to explain it to me in plain english. i think i understand now 🧶`;
     case 'emo':
       return `found ${repoName} at 2am and asked an AI to explain it. we're both still here.`;
     case 'bro':
@@ -149,7 +190,10 @@ export async function POST(req: NextRequest) {
       message: c.commit.message,
       date: new Date(c.commit.author.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       rawDate: c.commit.author.date,
+      sha: c.sha as string,
     }));
+
+    const latestCommitSha = commits[0]?.sha || '';
 
     const lastCommitDays = commits.length ? daysSince(commits[0].rawDate) : 999;
     const isAbandoned = lastCommitDays > 30;
@@ -243,6 +287,8 @@ ${commits.map((c: any, i: number) => `${i + 1}. "${c.message}" — ${c.date}`).j
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
+      system: mode === 'poetry' ? undefined : SYSTEM_PROMPT,
+      temperature: mode === 'poetry' ? undefined : getTemperature(mode as PersonalityMode),
       messages: [{ role: 'user', content: prompt }],
     });
 
@@ -261,6 +307,7 @@ ${commits.map((c: any, i: number) => `${i + 1}. "${c.message}" — ${c.date}`).j
         language: repoData.language,
         isAbandoned,
         daysSinceUpdate: lastCommitDays,
+        latestCommitSha,
       }
     });
 
