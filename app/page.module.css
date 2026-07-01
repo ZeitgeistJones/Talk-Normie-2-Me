@@ -217,6 +217,9 @@
 .reexplainBtnDark { font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 0.5px solid #444; background: #111; color: #ddd; cursor: pointer; font-family: inherit; }
 .reexplainBtnDark:hover { background: #fff; color: #0a0a0a; }
 
+.modeHintLight { font-size: 11px; color: #aaa; text-align: center; margin-top: -8px; margin-bottom: 12px; }
+.modeHintDark { font-size: 11px; color: #444; text-align: center; margin-top: -8px; margin-bottom: 12px; }
+
 .modalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
 .modalCardLight { background: #fff; border-radius: 12px; max-width: 520px; width: 100%; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
 .modalCardDark { background: #111; border-radius: 12px; max-width: 520px; width: 100%; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 0.5px solid #333; }
@@ -229,33 +232,152 @@
 .modalBtnSecondaryLight { padding: 8px 16px; border-radius: 8px; border: 0.5px solid #ddd; background: #fff; color: #555; font-size: 13px; cursor: pointer; font-family: inherit; }
 .modalBtnSecondaryDark { padding: 8px 16px; border-radius: 8px; border: 0.5px solid #333; background: #111; color: #aaa; font-size: 13px; cursor: pointer; font-family: inherit; }
 
-/* ── Personality mode accents ─────────────────────────────────────────────── */
-.container[data-mode="flirty"][data-theme="light"] { --mode-accent: #c08090; }
-.container[data-mode="flirty"][data-theme="light"] .modeWordLight { color: #8a4055; border-bottom-color: #c08090; }
-.container[data-mode="flirty"][data-theme="dark"] .modeWordDark { color: #c08090; border-bottom-color: #8a5060; }
+/* ── Personality mode accents (data-mode on <main>) ──────────────────────── */
 
-.container[data-mode="linkedin"][data-theme="light"] .modeWordLight { color: #0a66c2; border-bottom-color: #0a66c2; }
-.container[data-mode="linkedin"][data-theme="dark"] .modeWordDark { color: #5a9fd4; border-bottom-color: #0a66c2; }
+/* normie */
+main.mainLight[data-mode="normie"][data-theme="light"] { background: #fafafa; }
+main.mainDark[data-mode="normie"][data-theme="dark"] { background: #0a0a0a; }
 
-.container[data-mode="grandma"][data-theme="light"] .modeWordLight { color: #8a6a50; border-bottom-color: #c0a080; font-family: Georgia, serif; font-style: italic; }
-.container[data-mode="grandma"][data-theme="dark"] .modeWordDark { color: #c0a080; border-bottom-color: #8a6a50; font-family: Georgia, serif; font-style: italic; }
+/* fullnormie */
+main.mainLight[data-mode="fullnormie"][data-theme="light"] { background: #fcfcfc; }
+main.mainLight[data-mode="fullnormie"][data-theme="light"] .taglineLight { font-size: 14px; color: #666; }
+main.mainLight[data-mode="fullnormie"][data-theme="light"] .inputLight { border-color: #ccc; }
+main.mainDark[data-mode="fullnormie"][data-theme="dark"] { background: #080808; }
+main.mainDark[data-mode="fullnormie"][data-theme="dark"] .taglineDark { font-size: 14px; }
 
-.container[data-mode="bro"][data-theme="light"] .buttonLight { box-shadow: 2px 2px 0 #1a1a1a; }
-.container[data-mode="bro"][data-theme="dark"] .buttonDark { box-shadow: 2px 2px 0 #fff; }
+/* bro */
+main.mainLight[data-mode="bro"][data-theme="light"] { background: #f5f5f5; }
+main.mainLight[data-mode="bro"][data-theme="light"] .modeWordLight { font-family: "Arial Black", Impact, sans-serif; font-weight: 800; letter-spacing: -0.02em; }
+main.mainLight[data-mode="bro"][data-theme="light"] .taglineLight { font-family: "Arial Black", Impact, sans-serif; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #333; }
+main.mainLight[data-mode="bro"][data-theme="light"] .inputLight { border-width: 2px; border-color: #1a1a1a; }
+main.mainLight[data-mode="bro"][data-theme="light"] .buttonLight { box-shadow: 3px 3px 0 #1a1a1a; border-radius: 4px; }
+main.mainDark[data-mode="bro"][data-theme="dark"] { background: #0d0d0d; }
+main.mainDark[data-mode="bro"][data-theme="dark"] .modeWordDark { font-family: "Arial Black", Impact, sans-serif; font-weight: 800; }
+main.mainDark[data-mode="bro"][data-theme="dark"] .taglineDark { font-family: "Arial Black", Impact, sans-serif; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+main.mainDark[data-mode="bro"][data-theme="dark"] .inputDark { border-width: 2px; border-color: #fff; }
+main.mainDark[data-mode="bro"][data-theme="dark"] .buttonDark { box-shadow: 3px 3px 0 #fff; border-radius: 4px; }
 
-.container[data-mode="conspiracy"][data-theme="light"] .mainLight { background: #fffef8; }
-.container[data-mode="conspiracy"][data-theme="light"] .taglineLight { font-family: "Courier New", monospace; font-size: 12px; }
+/* flirty */
+main.mainLight[data-mode="flirty"][data-theme="light"] { background: linear-gradient(180deg, #fff5f7 0%, #faf0f3 100%); }
+main.mainLight[data-mode="flirty"][data-theme="light"] .modeWordLight { color: #8a4055; border-bottom-color: #c08090; font-family: Georgia, serif; font-style: italic; }
+main.mainLight[data-mode="flirty"][data-theme="light"] .taglineLight { font-family: Georgia, serif; font-style: italic; color: #7a5060; }
+main.mainLight[data-mode="flirty"][data-theme="light"] .inputLight { border-color: rgba(192,128,144,0.5); background: #fffafa; }
+main.mainLight[data-mode="flirty"][data-theme="light"] .inputLight:focus { border-color: #c08090; }
+main.mainLight[data-mode="flirty"][data-theme="light"] .buttonLight { background: #8a4055; }
+main.mainLight[data-mode="flirty"][data-theme="light"] .buttonLight:hover:not(:disabled) { background: #6a3045; }
+main.mainLight[data-mode="flirty"][data-theme="light"] .logoIconLight { background: #8a4055; }
+main.mainDark[data-mode="flirty"][data-theme="dark"] { background: linear-gradient(180deg, #1a0f12 0%, #120a0d 100%); }
+main.mainDark[data-mode="flirty"][data-theme="dark"] .modeWordDark { color: #c08090; border-bottom-color: #8a5060; font-family: Georgia, serif; font-style: italic; }
+main.mainDark[data-mode="flirty"][data-theme="dark"] .taglineDark { font-family: Georgia, serif; font-style: italic; color: #906070; }
+main.mainDark[data-mode="flirty"][data-theme="dark"] .inputDark { border-color: rgba(192,128,144,0.35); }
+main.mainDark[data-mode="flirty"][data-theme="dark"] .buttonDark { background: #c08090; color: #1a0f12; }
+main.mainDark[data-mode="flirty"][data-theme="dark"] .logoIconDark { background: #c08090; }
 
-.container[data-mode="sporty"][data-theme="light"] .inputLight { border-left: 3px solid #1a1a1a; border-radius: 0; }
-.container[data-mode="sporty"][data-theme="light"] .taglineLight { text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
+/* emo */
+main.mainLight[data-mode="emo"][data-theme="light"] { background: #ececec; }
+main.mainLight[data-mode="emo"][data-theme="light"] .container { border-top: 2px solid #444; padding-top: 8px; }
+main.mainLight[data-mode="emo"][data-theme="light"] .modeWordLight { font-family: "Courier New", monospace; color: #333; border-bottom-color: #666; }
+main.mainLight[data-mode="emo"][data-theme="light"] .taglineLight { font-family: "Courier New", monospace; font-size: 12px; color: #555; letter-spacing: 0.02em; }
+main.mainLight[data-mode="emo"][data-theme="light"] .inputLight { border-color: #888; background: #f5f5f5; border-radius: 0; }
+main.mainLight[data-mode="emo"][data-theme="light"] .buttonLight { background: #333; border-radius: 0; }
+main.mainDark[data-mode="emo"][data-theme="dark"] { background: #111; }
+main.mainDark[data-mode="emo"][data-theme="dark"] .container { border-top: 2px solid #444; padding-top: 8px; }
+main.mainDark[data-mode="emo"][data-theme="dark"] .modeWordDark { font-family: "Courier New", monospace; color: #aaa; border-bottom-color: #555; }
+main.mainDark[data-mode="emo"][data-theme="dark"] .taglineDark { font-family: "Courier New", monospace; font-size: 12px; color: #666; }
+main.mainDark[data-mode="emo"][data-theme="dark"] .inputDark { border-color: #555; border-radius: 0; }
+main.mainDark[data-mode="emo"][data-theme="dark"] .buttonDark { background: #444; color: #eee; border-radius: 0; }
 
-.container[data-mode="brainrot"][data-theme="light"] .modeWordLight { font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+/* brainrot */
+main.mainLight[data-mode="brainrot"][data-theme="light"] { background: linear-gradient(135deg, #fff 0%, #f0fff0 40%, #fffef0 100%); }
+main.mainLight[data-mode="brainrot"][data-theme="light"] .modeWordLight { font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #1a1a1a; }
+main.mainLight[data-mode="brainrot"][data-theme="light"] .taglineLight { font-weight: 600; font-size: 12px; letter-spacing: 0.02em; color: #444; }
+main.mainLight[data-mode="brainrot"][data-theme="light"] .inputLight { border: 2px solid #1a1a1a; border-radius: 12px; }
+main.mainLight[data-mode="brainrot"][data-theme="light"] .buttonLight { background: linear-gradient(90deg, #ff006e, #8338ec); border-radius: 12px; }
+main.mainDark[data-mode="brainrot"][data-theme="dark"] { background: linear-gradient(135deg, #0a0a0a 0%, #0a100a 50%, #100a0a 100%); }
+main.mainDark[data-mode="brainrot"][data-theme="dark"] .modeWordDark { font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+main.mainDark[data-mode="brainrot"][data-theme="dark"] .taglineDark { font-weight: 600; font-size: 12px; }
+main.mainDark[data-mode="brainrot"][data-theme="dark"] .inputDark { border: 2px solid #fff; border-radius: 12px; }
+main.mainDark[data-mode="brainrot"][data-theme="dark"] .buttonDark { background: linear-gradient(90deg, #ff006e, #8338ec); color: #fff; border-radius: 12px; }
 
-.container[data-mode="otaku"][data-theme="light"] .modeWordLight { color: #5a3a8a; border-bottom-color: #8a6abf; }
+/* sporty */
+main.mainLight[data-mode="sporty"][data-theme="light"] { background: #f4f4f4; }
+main.mainLight[data-mode="sporty"][data-theme="light"] .modeWordLight { font-family: "Arial Black", Impact, sans-serif; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; font-size: 14px; }
+main.mainLight[data-mode="sporty"][data-theme="light"] .taglineLight { text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; font-weight: 700; color: #333; }
+main.mainLight[data-mode="sporty"][data-theme="light"] .inputLight { border-left: 4px solid #1a1a1a; border-radius: 0; }
+main.mainLight[data-mode="sporty"][data-theme="light"] .buttonLight { background: #1a1a1a; border-radius: 0; text-transform: uppercase; font-size: 12px; letter-spacing: 0.06em; }
+main.mainDark[data-mode="sporty"][data-theme="dark"] { background: #0c0c0c; }
+main.mainDark[data-mode="sporty"][data-theme="dark"] .modeWordDark { font-family: "Arial Black", Impact, sans-serif; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; font-size: 14px; }
+main.mainDark[data-mode="sporty"][data-theme="dark"] .taglineDark { text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; font-weight: 700; }
+main.mainDark[data-mode="sporty"][data-theme="dark"] .inputDark { border-left: 4px solid #fff; border-radius: 0; }
+main.mainDark[data-mode="sporty"][data-theme="dark"] .buttonDark { border-radius: 0; text-transform: uppercase; font-size: 12px; letter-spacing: 0.06em; }
 
-.container[data-mode="poetry"][data-theme="light"] .taglineLight { font-family: Georgia, serif; font-style: italic; }
+/* otaku */
+main.mainLight[data-mode="otaku"][data-theme="light"] { background: linear-gradient(180deg, #faf8ff 0%, #f5f0ff 100%); }
+main.mainLight[data-mode="otaku"][data-theme="light"] .modeWordLight { color: #5a3a8a; border-bottom-color: #8a6abf; letter-spacing: 0.06em; }
+main.mainLight[data-mode="otaku"][data-theme="light"] .taglineLight { color: #6a5080; letter-spacing: 0.02em; }
+main.mainLight[data-mode="otaku"][data-theme="light"] .inputLight { border-color: rgba(138,106,191,0.45); background: #fefeff; }
+main.mainLight[data-mode="otaku"][data-theme="light"] .buttonLight { background: #5a3a8a; }
+main.mainLight[data-mode="otaku"][data-theme="light"] .buttonLight:hover:not(:disabled) { background: #4a2a7a; }
+main.mainLight[data-mode="otaku"][data-theme="light"] .logoIconLight { background: #5a3a8a; }
+main.mainDark[data-mode="otaku"][data-theme="dark"] { background: linear-gradient(180deg, #100a18 0%, #0a0810 100%); }
+main.mainDark[data-mode="otaku"][data-theme="dark"] .modeWordDark { color: #a080d0; border-bottom-color: #6a50a0; letter-spacing: 0.06em; }
+main.mainDark[data-mode="otaku"][data-theme="dark"] .taglineDark { color: #806090; }
+main.mainDark[data-mode="otaku"][data-theme="dark"] .inputDark { border-color: rgba(138,106,191,0.4); }
+main.mainDark[data-mode="otaku"][data-theme="dark"] .buttonDark { background: #8a6abf; color: #100a18; }
+main.mainDark[data-mode="otaku"][data-theme="dark"] .logoIconDark { background: #8a6abf; }
 
-.container[data-mode="emo"][data-theme="light"] { border-top: 2px solid #444; padding-top: 4px; }
+/* linkedin */
+main.mainLight[data-mode="linkedin"][data-theme="light"] { background: #f3f2ef; }
+main.mainLight[data-mode="linkedin"][data-theme="light"] .modeWordLight { color: #0a66c2; border-bottom-color: #0a66c2; }
+main.mainLight[data-mode="linkedin"][data-theme="light"] .taglineLight { color: #555; font-size: 13px; }
+main.mainLight[data-mode="linkedin"][data-theme="light"] .inputLight { border-color: rgba(10,102,194,0.35); background: #fff; }
+main.mainLight[data-mode="linkedin"][data-theme="light"] .inputLight:focus { border-color: #0a66c2; }
+main.mainLight[data-mode="linkedin"][data-theme="light"] .buttonLight { background: #0a66c2; }
+main.mainLight[data-mode="linkedin"][data-theme="light"] .buttonLight:hover:not(:disabled) { background: #084d94; }
+main.mainLight[data-mode="linkedin"][data-theme="light"] .logoIconLight { background: #0a66c2; }
+main.mainDark[data-mode="linkedin"][data-theme="dark"] { background: #0e0e0c; }
+main.mainDark[data-mode="linkedin"][data-theme="dark"] .modeWordDark { color: #5a9fd4; border-bottom-color: #0a66c2; }
+main.mainDark[data-mode="linkedin"][data-theme="dark"] .taglineDark { color: #888; }
+main.mainDark[data-mode="linkedin"][data-theme="dark"] .inputDark { border-color: rgba(10,102,194,0.4); }
+main.mainDark[data-mode="linkedin"][data-theme="dark"] .buttonDark { background: #0a66c2; color: #fff; }
+main.mainDark[data-mode="linkedin"][data-theme="dark"] .logoIconDark { background: #0a66c2; }
+
+/* grandma */
+main.mainLight[data-mode="grandma"][data-theme="light"] { background: #faf6f0; }
+main.mainLight[data-mode="grandma"][data-theme="light"] .modeWordLight { color: #8a6a50; border-bottom-color: #c0a080; font-family: Georgia, serif; font-style: italic; }
+main.mainLight[data-mode="grandma"][data-theme="light"] .taglineLight { font-family: Georgia, serif; font-style: italic; color: #7a6050; font-size: 14px; }
+main.mainLight[data-mode="grandma"][data-theme="light"] .inputLight { border-color: rgba(180,140,100,0.45); background: #fffdf8; border-radius: 10px; }
+main.mainLight[data-mode="grandma"][data-theme="light"] .buttonLight { background: #8a6a50; border-radius: 10px; }
+main.mainLight[data-mode="grandma"][data-theme="light"] .buttonLight:hover:not(:disabled) { background: #6a5038; }
+main.mainDark[data-mode="grandma"][data-theme="dark"] { background: #141210; }
+main.mainDark[data-mode="grandma"][data-theme="dark"] .modeWordDark { color: #c0a080; border-bottom-color: #8a6a50; font-family: Georgia, serif; font-style: italic; }
+main.mainDark[data-mode="grandma"][data-theme="dark"] .taglineDark { font-family: Georgia, serif; font-style: italic; color: #907060; font-size: 14px; }
+main.mainDark[data-mode="grandma"][data-theme="dark"] .inputDark { border-color: rgba(180,140,100,0.35); border-radius: 10px; }
+main.mainDark[data-mode="grandma"][data-theme="dark"] .buttonDark { background: #c0a080; color: #141210; border-radius: 10px; }
+
+/* conspiracy */
+main.mainLight[data-mode="conspiracy"][data-theme="light"] { background: #fffef8; }
+main.mainLight[data-mode="conspiracy"][data-theme="light"] .modeWordLight { font-family: "Courier New", monospace; color: #3a3a20; border-bottom-color: #888; letter-spacing: 0.04em; font-size: 14px; }
+main.mainLight[data-mode="conspiracy"][data-theme="light"] .taglineLight { font-family: "Courier New", monospace; font-size: 12px; color: #555; letter-spacing: 0.02em; }
+main.mainLight[data-mode="conspiracy"][data-theme="light"] .inputLight { border-color: #aaa; background: #fffef5; font-family: "Courier New", monospace; font-size: 13px; border-radius: 0; }
+main.mainLight[data-mode="conspiracy"][data-theme="light"] .buttonLight { background: #3a3a20; border-radius: 0; font-family: "Courier New", monospace; font-size: 13px; }
+main.mainDark[data-mode="conspiracy"][data-theme="dark"] { background: #0e0e08; }
+main.mainDark[data-mode="conspiracy"][data-theme="dark"] .modeWordDark { font-family: "Courier New", monospace; color: #c0c080; border-bottom-color: #666; letter-spacing: 0.04em; font-size: 14px; }
+main.mainDark[data-mode="conspiracy"][data-theme="dark"] .taglineDark { font-family: "Courier New", monospace; font-size: 12px; color: #666; }
+main.mainDark[data-mode="conspiracy"][data-theme="dark"] .inputDark { border-color: #444; font-family: "Courier New", monospace; font-size: 13px; border-radius: 0; background: #0a0a06; }
+main.mainDark[data-mode="conspiracy"][data-theme="dark"] .buttonDark { background: #c0c080; color: #0e0e08; border-radius: 0; font-family: "Courier New", monospace; font-size: 13px; }
+
+/* poetry */
+main.mainLight[data-mode="poetry"][data-theme="light"] { background: #faf9f6; }
+main.mainLight[data-mode="poetry"][data-theme="light"] .modeWordLight { font-family: Georgia, serif; font-style: italic; color: #555; border-bottom-color: #bbb; opacity: 0.85; }
+main.mainLight[data-mode="poetry"][data-theme="light"] .taglineLight { font-family: Georgia, serif; font-style: italic; color: #777; font-size: 14px; }
+main.mainLight[data-mode="poetry"][data-theme="light"] .inputLight { border-color: #ccc; background: #fff; font-family: Georgia, serif; }
+main.mainLight[data-mode="poetry"][data-theme="light"] .buttonLight { background: #444; font-family: Georgia, serif; font-style: italic; }
+main.mainDark[data-mode="poetry"][data-theme="dark"] { background: #0c0c0a; }
+main.mainDark[data-mode="poetry"][data-theme="dark"] .modeWordDark { font-family: Georgia, serif; font-style: italic; color: #aaa; border-bottom-color: #555; opacity: 0.85; }
+main.mainDark[data-mode="poetry"][data-theme="dark"] .taglineDark { font-family: Georgia, serif; font-style: italic; color: #666; font-size: 14px; }
+main.mainDark[data-mode="poetry"][data-theme="dark"] .inputDark { border-color: #333; font-family: Georgia, serif; }
+main.mainDark[data-mode="poetry"][data-theme="dark"] .buttonDark { background: #888; color: #0c0c0a; font-family: Georgia, serif; font-style: italic; }
 
 /* ── Result top bar ──────────────────────────────────────────────────────── */
 .resultTopLight { padding: 12px 16px; border-bottom: 0.5px solid #f0f0f0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

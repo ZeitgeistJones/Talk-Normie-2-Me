@@ -20,6 +20,7 @@ type ShareCardPayload = {
   example: string;
   status: string;
   recentActivity?: string;
+  whyStopped?: string;
   cta: string;
   url: string;
   language?: string;
@@ -123,7 +124,7 @@ function splitSentences(text: string): string[] {
 }
 
 // Always cuts on a sentence boundary, ends with ....
-function expandPreview(text: string, maxChars = 720, minSentences = 3): string {
+function expandPreview(text: string, maxChars = 900, minSentences = 4): string {
   const sentences = splitSentences(text);
   if (!sentences.length) return fitText(text, maxChars);
 
@@ -191,20 +192,21 @@ function drawSection(
   return wrapLines(ctx, text, x, y, maxW, lineH, maxLines);
 }
 
-function getShareLabels(mode: PersonalityMode): [string, string, string, string] {
-  const labels: Partial<Record<PersonalityMode, [string, string, string, string]>> = {
-    flirty: ['what it is', 'why you want it', 'seeing anyone?', 'recently active'],
-    bro: ['WHAT IT IS', 'WHY IT SLAPS', 'ALIVE OR DEAD', 'RECENT PLAYS'],
-    emo: ['what this is', 'a page from it', 'still breathing?', 'the last words'],
-    conspiracy: ['COVER STORY', 'EXHIBIT A', 'STILL ACTIVE?', 'THE TRAIL'],
-    brainrot: ['THE LORE', 'WHY IT BUSSIN', 'STILL ALIVE FR?', 'RECENT GLAZING'],
-    sporty: ['SCOUTING REPORT', 'TAPE SAMPLE', 'GAME STATUS', 'RECENT PLAYS'],
-    otaku: ['LORE DROP', 'ARC PREVIEW', 'ARC STATUS', 'EPISODE RECAP'],
-    linkedin: ['THE THESIS', 'WHO THIS SERVES', 'MOMENTUM CHECK', 'RECENT WINS'],
-    grandma: ['what it is, dear', 'who needs this', 'still going?', 'recent news'],
-    fullnormie: ['WHAT IT IS', 'WHY IT MATTERS', 'IS IT ALIVE?', 'WHAT CHANGED'],
+function getShareLabels(mode: PersonalityMode): string[] {
+  const labels: Partial<Record<PersonalityMode, string[]>> = {
+    flirty: ['what it is', 'why you want it', 'seeing anyone?', 'recently active', 'why it ghosted'],
+    bro: ['WHAT IT IS', 'WHY IT SLAPS', 'ALIVE OR DEAD', 'RECENT PLAYS', 'WHY IT QUIT'],
+    emo: ['what this is', 'a page from it', 'still breathing?', 'the last words', 'where it went'],
+    conspiracy: ['COVER STORY', 'EXHIBIT A', 'STILL ACTIVE?', 'THE TRAIL', 'WHY IT WENT DARK'],
+    brainrot: ['THE LORE', 'WHY IT BUSSIN', 'STILL ALIVE FR?', 'RECENT GLAZING', 'WHY IT FLOPPED'],
+    sporty: ['SCOUTING REPORT', 'TAPE SAMPLE', 'GAME STATUS', 'RECENT PLAYS', 'FINAL WHISTLE'],
+    otaku: ['LORE DROP', 'ARC PREVIEW', 'ARC STATUS', 'EPISODE RECAP', 'WHY IT ENDED'],
+    linkedin: ['THE THESIS', 'WHO THIS SERVES', 'MOMENTUM CHECK', 'RECENT WINS', 'WHY IT PAUSED'],
+    grandma: ['what it is, dear', 'who needs this', 'still going?', 'recent news', 'where it went'],
+    fullnormie: ['WHAT IT IS', 'WHY IT MATTERS', 'IS IT ALIVE?', 'WHAT CHANGED', 'WHY IT STOPPED'],
+    poetry: ['what it is', 'a line from the translation', 'alive or quiet', 'found poetry'],
   };
-  return labels[mode] || ['WHAT IT IS', 'WHY IT MATTERS', 'STATUS', 'RECENT ACTIVITY'];
+  return labels[mode] || ['WHAT IT IS', 'WHY IT MATTERS', 'STATUS', 'RECENT ACTIVITY', 'WHY IT STOPPED'];
 }
 
 function drawHookQuote(
@@ -292,6 +294,7 @@ type RichContentTheme = {
   chipBg: string;
   chipColor: string;
   lineH: number;
+  transformText?: (text: string) => string;
 };
 
 function drawRichContent(
@@ -305,14 +308,23 @@ function drawRichContent(
   y = drawMetaChips(ctx, payload, theme.padX, y, theme.chipBg, theme.chipColor);
 
   const labels = getShareLabels(payload.mode);
-  const texts = [payload.whatIsIt, payload.example, payload.status, payload.recentActivity || ''];
+  const texts = [
+    payload.whatIsIt,
+    payload.example,
+    payload.status,
+    payload.recentActivity || '',
+    payload.whyStopped || '',
+  ];
+  const tf = theme.transformText || ((s: string) => s);
 
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < texts.length; i++) {
     if (!texts[i]?.trim()) continue;
+    const maxLines = i >= 3 ? 4 : 6;
+    const minSentences = i >= 3 ? 2 : 4;
     y = drawSection(
       ctx,
-      labels[i],
-      expandPreview(texts[i], theme.contentW - 20, i === 3 ? 2 : 3),
+      labels[i] || labels[labels.length - 1],
+      tf(expandPreview(texts[i], theme.contentW + 200, minSentences)),
       theme.padX,
       y,
       theme.contentW,
@@ -321,7 +333,7 @@ function drawRichContent(
       theme.labelColor,
       theme.bodyColor,
       theme.lineH,
-      i === 3 ? 3 : 4
+      maxLines
     );
     y += 8;
   }
@@ -332,18 +344,20 @@ function drawCardFooter(
   ctx: CanvasRenderingContext2D,
   payload: ShareCardPayload,
   x: number,
+  y: number,
   ctaFont: string,
   ctaColor: string,
   urlFont: string,
   urlColor: string
-) {
+): number {
   ctx.textAlign = 'left';
   ctx.font = ctaFont;
   ctx.fillStyle = ctaColor;
-  ctx.fillText(payload.cta, x, H - 48);
+  ctx.fillText(payload.cta, x, y);
   ctx.font = urlFont;
   ctx.fillStyle = urlColor;
-  ctx.fillText(payload.url, x, H - 28);
+  ctx.fillText(payload.url, x, y + 20);
+  return y + 44;
 }
 
 function drawSparkles(ctx: CanvasRenderingContext2D, points: Array<[number, number]>, color: string) {
@@ -479,15 +493,15 @@ function drawOtakuDoodles(ctx: CanvasRenderingContext2D, seed: number, W: number
 }
 
 const W = 900;
-const H = 720;
-const H_POETRY = 480;
+const H_MAX = 900;
+const H_MIN = 520;
 
-function drawNormie(ctx: CanvasRenderingContext2D, payload: ShareCardPayload, full: boolean) {
+function drawNormie(ctx: CanvasRenderingContext2D, payload: ShareCardPayload, full: boolean): number {
   ctx.fillStyle = '#fffdf9';
-  ctx.fillRect(0, 0, W, H);
-  drawPaperTexture(ctx, W, H, 0.018);
+  ctx.fillRect(0, 0, W, H_MAX);
+  drawPaperTexture(ctx, W, H_MAX, 0.018);
   ctx.strokeStyle = '#e7e1d8'; ctx.lineWidth = 1;
-  ctx.strokeRect(10, 10, W - 20, H - 20);
+  ctx.strokeRect(10, 10, W - 20, H_MAX - 20);
   ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, 0, W, 56);
   ctx.font = '600 12px system-ui, sans-serif'; ctx.fillStyle = '#ffffff'; ctx.textAlign = 'left';
   ctx.fillText('Talk Normie 2 Me', 26, 35);
@@ -499,7 +513,7 @@ function drawNormie(ctx: CanvasRenderingContext2D, payload: ShareCardPayload, fu
   ctx.fillStyle = '#1c1a17'; ctx.fillText(payload.repoName, 28, 94);
   ctx.strokeStyle = '#ece6dc'; ctx.beginPath(); ctx.moveTo(28, 108); ctx.lineTo(W - 28, 108); ctx.stroke();
 
-  drawRichContent(ctx, payload, {
+  const y = drawRichContent(ctx, payload, {
     padX: 28,
     contentW: W - 56,
     labelFont: '700 10px system-ui, sans-serif',
@@ -514,20 +528,17 @@ function drawNormie(ctx: CanvasRenderingContext2D, payload: ShareCardPayload, fu
     lineH: 23,
   }, 118);
 
-  drawCardFooter(ctx, payload, 28,
+  return drawCardFooter(ctx, payload, 28, y + 12,
     '600 12px system-ui, sans-serif', '#6f655a',
     '11px "Courier New", monospace', '#b6ada1');
 }
 
-function drawPoetry(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
-  const H = H_POETRY;
-
+function drawPoetry(ctx: CanvasRenderingContext2D, payload: ShareCardPayload): number {
   ctx.fillStyle = '#f6efe2';
-  ctx.fillRect(0, 0, W, H);
-  drawPaperTexture(ctx, W, H, 0.04);
+  ctx.fillRect(0, 0, W, H_MAX);
+  drawPaperTexture(ctx, W, H_MAX, 0.04);
 
-  // ruled lines
-  for (let ry = 72; ry < H - 42; ry += 28) {
+  for (let ry = 72; ry < H_MAX - 42; ry += 28) {
     ctx.strokeStyle = 'rgba(146,121,80,0.10)';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(56, ry); ctx.lineTo(W - 52, ry); ctx.stroke();
@@ -545,66 +556,54 @@ function drawPoetry(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
   ctx.strokeStyle = 'rgba(140,110,70,0.32)'; ctx.lineWidth = 0.75;
   ctx.beginPath(); ctx.moveTo(60, 90); ctx.lineTo(W - 60, 90); ctx.stroke();
 
-  // Section labels + poetry text preserving line breaks
   const labelFont = '500 10px "Courier New", monospace';
   const bodyFont = 'italic 15px Georgia, serif';
   const labelColor = 'rgba(120,94,60,0.74)';
   const bodyColor = '#332112';
   const lineH = 26;
+  const labels = getShareLabels('poetry');
 
-  let y = 112;
+  let y = 104;
+  if (payload.hook?.trim()) {
+    ctx.font = 'italic 14px Georgia, serif'; ctx.fillStyle = '#4a301b';
+    y = wrapLines(ctx, expandPreview(payload.hook, 500, 2), 60, y, W - 120, 22, 2) + 14;
+  }
 
-  // stanza 1 — what it is
-  ctx.font = labelFont; ctx.fillStyle = labelColor; ctx.textAlign = 'left';
-  ctx.fillText('what it is', 60, y);
-  y += 18;
-  ctx.font = bodyFont; ctx.fillStyle = bodyColor;
-  y = drawPoetryLines(ctx, previewPoetry(payload.whatIsIt, 3), 60, y, W - 120, lineH, 3);
+  const stanzas = [payload.whatIsIt, payload.example, payload.status, payload.recentActivity || ''];
+  for (let i = 0; i < stanzas.length; i++) {
+    if (!stanzas[i]?.trim()) continue;
+    ctx.font = labelFont; ctx.fillStyle = labelColor;
+    ctx.fillText(labels[i] || labels[labels.length - 1], 60, y);
+    y += 18;
+    ctx.font = bodyFont; ctx.fillStyle = bodyColor;
+    y = drawPoetryLines(ctx, previewPoetry(stanzas[i], 4), 60, y, W - 120, lineH, 4);
+    y += 14;
+  }
 
-  y += 18;
-
-  // stanza 2 — a line from the translation
-  ctx.font = labelFont; ctx.fillStyle = labelColor;
-  ctx.fillText('a line from the translation', 60, y);
-  y += 18;
-  ctx.font = bodyFont; ctx.fillStyle = bodyColor;
-  y = drawPoetryLines(ctx, previewPoetry(payload.example, 3), 60, y, W - 120, lineH, 3);
-
-  y += 18;
-
-  // stanza 3 — alive or quiet
-  ctx.font = labelFont; ctx.fillStyle = labelColor;
-  ctx.fillText('alive or quiet', 60, y);
-  y += 18;
-  ctx.font = bodyFont; ctx.fillStyle = '#4a3020';
-  drawPoetryLines(ctx, previewPoetry(payload.status, 2), 60, y, W - 120, lineH, 2);
-
-  // pen doodle
   ctx.save(); ctx.globalAlpha = 0.16;
   ctx.translate(W - 120, 108); ctx.rotate(-0.12);
   ctx.font = '28px serif'; ctx.fillStyle = '#5d2a18';
   ctx.fillText('✒', 0, 0);
   ctx.restore();
 
-  ctx.font = 'italic 13px Georgia, serif'; ctx.fillStyle = '#4a301b';
-  ctx.fillText(payload.cta, 60, H - 44);
-  ctx.font = '11px "Courier New", monospace'; ctx.fillStyle = 'rgba(120,94,60,0.76)';
-  ctx.fillText(payload.url, 60, H - 24);
+  return drawCardFooter(ctx, payload, 60, y + 8,
+    'italic 13px Georgia, serif', '#4a301b',
+    '11px "Courier New", monospace', 'rgba(120,94,60,0.76)');
 }
 
-function drawEmo(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
+function drawEmo(ctx: CanvasRenderingContext2D, payload: ShareCardPayload): number {
   const seed = hashString(payload.repoName + payload.mode);
-  ctx.fillStyle = '#f3f2ef'; ctx.fillRect(0, 0, W, H);
-  drawPaperTexture(ctx, W, H, 0.028);
+  ctx.fillStyle = '#f3f2ef'; ctx.fillRect(0, 0, W, H_MAX);
+  drawPaperTexture(ctx, W, H_MAX, 0.028);
   ctx.strokeStyle = 'rgba(182,182,176,0.4)'; ctx.lineWidth = 1;
-  for (let y = 62; y < H - 40; y += 28) {
-    ctx.beginPath(); ctx.moveTo(60, y); ctx.lineTo(W - 42, y); ctx.stroke();
+  for (let ly = 62; ly < H_MAX - 40; ly += 28) {
+    ctx.beginPath(); ctx.moveTo(60, ly); ctx.lineTo(W - 42, ly); ctx.stroke();
   }
   ctx.strokeStyle = 'rgba(185,65,65,0.34)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(98, 30); ctx.lineTo(98, H - 30); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(98, 30); ctx.lineTo(98, H_MAX - 30); ctx.stroke();
   ctx.fillStyle = '#e7e7e4'; ctx.strokeStyle = 'rgba(170,170,164,0.6)'; ctx.lineWidth = 1;
   for (let i = 0; i < 8; i++) {
-    const hy = 56 + (i * (H - 90)) / 7;
+    const hy = 56 + (i * (H_MAX - 90)) / 7;
     ctx.beginPath(); ctx.arc(22, hy, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
   ctx.font = '500 10px "Courier New", monospace'; ctx.fillStyle = 'rgba(78,78,78,0.6)';
@@ -612,32 +611,33 @@ function drawEmo(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
   ctx.font = '500 18px "Courier New", monospace'; ctx.fillStyle = '#1a1a1a';
   ctx.fillText(payload.repoName, 112, 76);
 
-  let y = 104;
-  y = drawSection(ctx, 'what this is', expandPreview(payload.whatIsIt, 540, 2), 112, y, W - 164,
-    '700 10px "Courier New", monospace', '15px "Courier New", monospace',
-    'rgba(92,92,92,0.72)', '#363636', 21, 5);
-  y += 10;
-  y = drawSection(ctx, 'a page from it', expandPreview(payload.example, 540, 2), 112, y, W - 164,
-    '700 10px "Courier New", monospace', '15px "Courier New", monospace',
-    'rgba(92,92,92,0.72)', '#202020', 21, 4);
-  y += 10;
-  drawSection(ctx, 'still breathing?', expandPreview(payload.status, 380, 2), 112, y, W - 164,
-    '700 10px "Courier New", monospace', '14px "Courier New", monospace',
-    'rgba(92,92,92,0.72)', '#404040', 20, 3);
+  const y = drawRichContent(ctx, payload, {
+    padX: 112,
+    contentW: W - 164,
+    labelFont: '700 10px "Courier New", monospace',
+    bodyFont: '15px "Courier New", monospace',
+    labelColor: 'rgba(92,92,92,0.72)',
+    bodyColor: '#363636',
+    hookFont: 'italic 13px "Courier New", monospace',
+    hookColor: '#404040',
+    hookBg: 'rgba(185,65,65,0.08)',
+    chipBg: 'rgba(185,65,65,0.12)',
+    chipColor: '#666',
+    lineH: 21,
+  }, 104);
 
   drawNotebookStars(ctx, seed, W);
-  ctx.font = '12px "Courier New", monospace'; ctx.fillStyle = '#555';
-  ctx.fillText(payload.cta, 112, H - 48);
-  ctx.font = '10px "Courier New", monospace'; ctx.fillStyle = 'rgba(118,118,118,0.66)';
-  ctx.fillText(payload.url, 112, H - 28);
+  return drawCardFooter(ctx, payload, 112, y + 12,
+    '12px "Courier New", monospace', '#555',
+    '10px "Courier New", monospace', 'rgba(118,118,118,0.66)');
 }
 
-function drawBro(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
-  ctx.fillStyle = '#0f0f0f'; ctx.fillRect(0, 0, W, H);
+function drawBro(ctx: CanvasRenderingContext2D, payload: ShareCardPayload): number {
+  ctx.fillStyle = '#0f0f0f'; ctx.fillRect(0, 0, W, H_MAX);
   ctx.font = '900 220px "Arial Black", Impact, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.textAlign = 'center';
-  ctx.fillText('PR', W / 2, H / 2 + 80);
-  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.strokeRect(16, 16, W - 32, H - 32);
+  ctx.fillText('PR', W / 2, H_MAX / 2 + 80);
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.strokeRect(16, 16, W - 32, H_MAX - 32);
   ctx.fillStyle = '#ffffff'; ctx.fillRect(16, 16, W - 32, 6);
   ctx.textAlign = 'left';
   const badge = ' 🔥 W REPO ';
@@ -648,32 +648,34 @@ function drawBro(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
   ctx.fillStyle = '#fff'; ctx.font = '900 26px "Arial Black", Impact, sans-serif';
   ctx.fillText(payload.repoName.toUpperCase(), 40, 96);
 
-  let y = 122;
-  y = drawSection(ctx, 'WHAT IT IS', expandPreview(payload.whatIsIt, 480, 2).toUpperCase(), 40, y, W - 80,
-    '900 10px "Arial Black", sans-serif', '700 14px "Arial Black", sans-serif',
-    '#7d7d7d', '#d4d4d4', 19, 5);
-  y += 10;
-  y = drawSection(ctx, 'WHY IT SLAPS', expandPreview(payload.example, 480, 2).toUpperCase(), 40, y, W - 80,
-    '900 10px "Arial Black", sans-serif', '700 14px "Arial Black", sans-serif',
-    '#7d7d7d', '#ffffff', 19, 4);
-  y += 10;
-  drawSection(ctx, 'ALIVE OR DEAD', expandPreview(payload.status, 340, 2).toUpperCase(), 40, y, W - 80,
-    '900 10px "Arial Black", sans-serif', '700 13px "Arial Black", sans-serif',
-    '#7d7d7d', '#aaaaaa', 18, 3);
+  const y = drawRichContent(ctx, payload, {
+    padX: 40,
+    contentW: W - 80,
+    labelFont: '900 10px "Arial Black", sans-serif',
+    bodyFont: '700 14px "Arial Black", sans-serif',
+    labelColor: '#7d7d7d',
+    bodyColor: '#d4d4d4',
+    hookFont: '700 13px "Arial Black", sans-serif',
+    hookColor: '#ffffff',
+    hookBg: 'rgba(255,255,255,0.08)',
+    chipBg: 'rgba(255,255,255,0.12)',
+    chipColor: '#aaaaaa',
+    lineH: 19,
+    transformText: (s) => s.toUpperCase(),
+  }, 118);
 
-  ctx.font = '900 12px "Arial Black", sans-serif'; ctx.fillStyle = '#d9d9d9';
-  ctx.fillText(payload.cta.toUpperCase(), 40, H - 48);
-  ctx.font = '11px "Courier New", monospace'; ctx.fillStyle = 'rgba(150,150,150,0.7)';
-  ctx.fillText(payload.url, 40, H - 28);
+  return drawCardFooter(ctx, payload, 40, y + 12,
+    '900 12px "Arial Black", sans-serif', '#d9d9d9',
+    '11px "Courier New", monospace', 'rgba(150,150,150,0.7)');
 }
 
-function drawConspiracy(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
+function drawConspiracy(ctx: CanvasRenderingContext2D, payload: ShareCardPayload): number {
   const seed = hashString(payload.repoName + payload.mode);
-  ctx.fillStyle = '#fefdf5'; ctx.fillRect(0, 0, W, H);
-  drawPaperTexture(ctx, W, H, 0.024);
+  ctx.fillStyle = '#fefdf5'; ctx.fillRect(0, 0, W, H_MAX);
+  drawPaperTexture(ctx, W, H_MAX, 0.024);
   ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1;
-  ctx.strokeRect(20, 20, W - 40, H - 40); ctx.strokeRect(24, 24, W - 48, H - 48);
-  ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-0.42);
+  ctx.strokeRect(20, 20, W - 40, H_MAX - 40); ctx.strokeRect(24, 24, W - 48, H_MAX - 48);
+  ctx.save(); ctx.translate(W / 2, H_MAX / 2); ctx.rotate(-0.42);
   ctx.font = '900 72px "Arial Black", Impact, sans-serif';
   ctx.fillStyle = 'rgba(180,40,40,0.06)'; ctx.textAlign = 'center';
   ctx.fillText('CONFIDENTIAL', 0, 20); ctx.restore();
@@ -690,37 +692,38 @@ function drawConspiracy(ctx: CanvasRenderingContext2D, payload: ShareCardPayload
   ctx.strokeStyle = '#ccc'; ctx.lineWidth = 0.75;
   ctx.beginPath(); ctx.moveTo(40, 96); ctx.lineTo(W - 40, 96); ctx.stroke();
 
-  let y = 122;
-  y = drawSection(ctx, 'COVER STORY', expandPreview(payload.whatIsIt, 540, 2), 40, y, W - 80,
-    '700 10px "Courier New", monospace', '14px "Courier New", monospace',
-    '#7a7a72', '#1a1a1a', 21, 5);
-  y += 10;
-  y = drawSection(ctx, 'EXHIBIT A', expandPreview(payload.example, 540, 2), 40, y, W - 80,
-    '700 10px "Courier New", monospace', '14px "Courier New", monospace',
-    '#7a7a72', '#1a1a1a', 21, 4);
-  y += 10;
-  drawSection(ctx, 'STILL ACTIVE?', expandPreview(payload.status, 380, 2), 40, y, W - 80,
-    '700 10px "Courier New", monospace', '13px "Courier New", monospace',
-    '#7a7a72', '#3a3a30', 20, 3);
+  const y = drawRichContent(ctx, payload, {
+    padX: 40,
+    contentW: W - 80,
+    labelFont: '700 10px "Courier New", monospace',
+    bodyFont: '14px "Courier New", monospace',
+    labelColor: '#7a7a72',
+    bodyColor: '#1a1a1a',
+    hookFont: 'italic 13px "Courier New", monospace',
+    hookColor: '#3a3a30',
+    hookBg: 'rgba(180,40,40,0.06)',
+    chipBg: 'rgba(180,40,40,0.1)',
+    chipColor: '#7a7a72',
+    lineH: 21,
+  }, 108);
 
-  drawConspiracyDoodles(ctx, seed, W, H);
-  ctx.font = '11px "Courier New", monospace'; ctx.fillStyle = '#5a5a50';
-  ctx.fillText(payload.cta, 40, H - 48);
-  ctx.font = '10px "Courier New", monospace'; ctx.fillStyle = 'rgba(120,120,100,0.7)';
-  ctx.fillText(payload.url, 40, H - 28);
+  drawConspiracyDoodles(ctx, seed, W, H_MAX);
+  return drawCardFooter(ctx, payload, 40, y + 12,
+    '11px "Courier New", monospace', '#5a5a50',
+    '10px "Courier New", monospace', 'rgba(120,120,100,0.7)');
 }
 
-function drawFlirty(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
+function drawFlirty(ctx: CanvasRenderingContext2D, payload: ShareCardPayload): number {
   const seed = hashString(payload.repoName + payload.mode);
-  ctx.fillStyle = '#fff8f8'; ctx.fillRect(0, 0, W, H);
-  drawPaperTexture(ctx, W, H, 0.016);
-  const vg = ctx.createRadialGradient(W / 2, H / 2, 200, W / 2, H / 2, 620);
+  ctx.fillStyle = '#fff8f8'; ctx.fillRect(0, 0, W, H_MAX);
+  drawPaperTexture(ctx, W, H_MAX, 0.016);
+  const vg = ctx.createRadialGradient(W / 2, H_MAX / 2, 200, W / 2, H_MAX / 2, 620);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(180,80,100,0.06)');
-  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H_MAX);
   ctx.strokeStyle = 'rgba(200,130,145,0.5)'; ctx.lineWidth = 1;
-  ctx.strokeRect(18, 18, W - 36, H - 36);
-  ctx.strokeStyle = 'rgba(200,130,145,0.25)'; ctx.strokeRect(24, 24, W - 48, H - 48);
-  drawSparkles(ctx, [[36, 40], [W - 36, 40], [36, H - 24], [W - 36, H - 24]], 'rgba(200,130,145,0.3)');
+  ctx.strokeRect(18, 18, W - 36, H_MAX - 36);
+  ctx.strokeStyle = 'rgba(200,130,145,0.25)'; ctx.strokeRect(24, 24, W - 48, H_MAX - 48);
+  drawSparkles(ctx, [[36, 40], [W - 36, 40]], 'rgba(200,130,145,0.3)');
   ctx.textAlign = 'left'; ctx.font = 'italic 11px Georgia, serif';
   ctx.fillStyle = 'rgba(180,100,120,0.6)';
   ctx.fillText('talk normie 2 me  ·  flirty edition', 50, 50);
@@ -729,7 +732,7 @@ function drawFlirty(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
   ctx.strokeStyle = 'rgba(200,130,145,0.35)'; ctx.lineWidth = 0.75;
   ctx.beginPath(); ctx.moveTo(50, 100); ctx.lineTo(W - 50, 100); ctx.stroke();
 
-  drawRichContent(ctx, payload, {
+  const y = drawRichContent(ctx, payload, {
     padX: 50,
     contentW: W - 100,
     labelFont: 'italic 11px Georgia, serif',
@@ -744,25 +747,25 @@ function drawFlirty(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
     lineH: 22,
   }, 118);
 
-  drawHeartDoodles(ctx, seed, W, H);
-  drawCardFooter(ctx, payload, 50,
+  drawHeartDoodles(ctx, seed, W, H_MAX);
+  return drawCardFooter(ctx, payload, 50, y + 12,
     'italic 12px Georgia, serif', '#8a5062',
     'italic 11px Georgia, serif', 'rgba(180,100,120,0.6)');
 }
 
-function drawBrainrot(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
+function drawBrainrot(ctx: CanvasRenderingContext2D, payload: ShareCardPayload): number {
   const seed = hashString(payload.repoName + payload.mode);
-  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H_MAX);
   const blobs = [
     { x: 80, y: 80, r: 60, c: 'rgba(255,0,200,0.08)' },
     { x: W - 100, y: 120, r: 80, c: 'rgba(0,200,255,0.08)' },
-    { x: 200, y: H - 80, r: 70, c: 'rgba(100,255,0,0.07)' },
-    { x: W - 60, y: H - 100, r: 50, c: 'rgba(255,200,0,0.1)' },
+    { x: 200, y: H_MAX - 80, r: 70, c: 'rgba(100,255,0,0.07)' },
+    { x: W - 60, y: H_MAX - 100, r: 50, c: 'rgba(255,200,0,0.1)' },
   ];
   for (const b of blobs) {
     const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
     g.addColorStop(0, b.c); g.addColorStop(1, 'transparent');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H_MAX);
   }
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, 52);
   ctx.font = '700 12px system-ui, sans-serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
@@ -770,102 +773,105 @@ function drawBrainrot(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) 
   ctx.font = '900 26px system-ui, "Arial Black", sans-serif'; ctx.fillStyle = '#000';
   ctx.fillText(payload.repoName, 24, 96);
 
-  let y = 122;
-  y = drawSection(ctx, 'THE LORE', expandPreview(payload.whatIsIt, 480, 2), 24, y, W - 48,
-    '900 10px system-ui, sans-serif', '15px system-ui, sans-serif', '#666', '#111', 21, 5);
-  y += 10;
-  y = drawSection(ctx, 'WHY IT BUSSIN', expandPreview(payload.example, 480, 2), 24, y, W - 48,
-    '900 10px system-ui, sans-serif', '15px system-ui, sans-serif', '#666', '#000', 21, 4);
-  y += 10;
-  drawSection(ctx, 'STILL ALIVE FR?', expandPreview(payload.status, 340, 2), 24, y, W - 48,
-    '900 10px system-ui, sans-serif', '14px system-ui, sans-serif', '#666', '#333', 20, 3);
+  const y = drawRichContent(ctx, payload, {
+    padX: 24,
+    contentW: W - 48,
+    labelFont: '900 10px system-ui, sans-serif',
+    bodyFont: '15px system-ui, sans-serif',
+    labelColor: '#666',
+    bodyColor: '#111',
+    hookFont: '700 13px system-ui, sans-serif',
+    hookColor: '#000',
+    hookBg: 'rgba(255,229,0,0.25)',
+    chipBg: '#f0f0f0',
+    chipColor: '#444',
+    lineH: 21,
+  }, 118);
 
-  drawBrainrotDoodles(ctx, seed, W, H);
-  ctx.font = '700 12px system-ui, sans-serif'; ctx.fillStyle = '#444';
-  ctx.fillText(payload.cta, 24, H - 48);
-  ctx.font = '11px system-ui, monospace'; ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.fillText(payload.url, 24, H - 28);
+  drawBrainrotDoodles(ctx, seed, W, H_MAX);
+  return drawCardFooter(ctx, payload, 24, y + 12,
+    '700 12px system-ui, sans-serif', '#444',
+    '11px system-ui, monospace', 'rgba(0,0,0,0.4)');
 }
 
-function drawSporty(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
+function drawSporty(ctx: CanvasRenderingContext2D, payload: ShareCardPayload): number {
   const seed = hashString(payload.repoName + payload.mode);
-  ctx.fillStyle = '#f8f8f8'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#f8f8f8'; ctx.fillRect(0, 0, W, H_MAX);
   ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, 0, W, 60);
   ctx.fillStyle = '#ffffff'; ctx.font = '900 12px "Arial Black", Impact, sans-serif';
   ctx.textAlign = 'left'; ctx.fillText('TALK NORMIE 2 ME', 24, 38);
   ctx.font = '700 12px "Arial Black", sans-serif'; ctx.fillStyle = '#888';
   ctx.textAlign = 'right'; ctx.fillText('🏆 SPORTY MODE', W - 24, 38);
-  ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, 60, 8, H - 60);
+  ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, 60, 8, H_MAX - 60);
   ctx.textAlign = 'left'; ctx.font = '900 30px "Arial Black", Impact, sans-serif';
   ctx.fillStyle = '#0a0a0a'; ctx.fillText(payload.repoName.toUpperCase(), 28, 104);
   ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(28, 114); ctx.lineTo(W - 28, 114); ctx.stroke();
 
-  let y = 138;
-  y = drawSection(ctx, 'SCOUTING REPORT', expandPreview(payload.whatIsIt, 440, 2).toUpperCase(), 28, y, W - 56,
-    '900 10px "Arial Black", sans-serif', '800 14px "Arial Black", sans-serif', '#666', '#222', 19, 5);
-  y += 10;
-  y = drawSection(ctx, 'TAPE SAMPLE', expandPreview(payload.example, 440, 2).toUpperCase(), 28, y, W - 56,
-    '900 10px "Arial Black", sans-serif', '800 14px "Arial Black", sans-serif', '#666', '#111', 19, 4);
-  y += 10;
-  drawSection(ctx, 'GAME STATUS', expandPreview(payload.status, 320, 2).toUpperCase(), 28, y, W - 56,
-    '900 10px "Arial Black", sans-serif', '800 13px "Arial Black", sans-serif', '#666', '#444', 18, 3);
+  const y = drawRichContent(ctx, payload, {
+    padX: 28,
+    contentW: W - 56,
+    labelFont: '900 10px "Arial Black", sans-serif',
+    bodyFont: '800 14px "Arial Black", sans-serif',
+    labelColor: '#666',
+    bodyColor: '#222',
+    hookFont: '700 13px "Arial Black", sans-serif',
+    hookColor: '#111',
+    hookBg: 'rgba(0,0,0,0.06)',
+    chipBg: '#eee',
+    chipColor: '#444',
+    lineH: 19,
+    transformText: (s) => s.toUpperCase(),
+  }, 132);
 
-  drawSportyDoodles(ctx, seed, W, H);
-  ctx.fillStyle = '#1a1a1a'; ctx.fillRect(28, H - 72, 168, 38);
-  ctx.font = '700 10px "Arial Black", sans-serif'; ctx.fillStyle = '#fff';
-  ctx.fillText('FILM ROOM  •  NO JARGON  •  BUILT', 36, H - 48);
-  ctx.font = '700 11px "Arial Black", sans-serif'; ctx.fillStyle = '#444';
-  ctx.fillText(payload.cta.toUpperCase(), 214, H - 48);
-  ctx.font = '10px "Courier New", monospace'; ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.fillText(payload.url, 28, H - 24);
+  drawSportyDoodles(ctx, seed, W, H_MAX);
+  return drawCardFooter(ctx, payload, 28, y + 12,
+    '700 11px "Arial Black", sans-serif', '#444',
+    '10px "Courier New", monospace', 'rgba(0,0,0,0.35)');
 }
 
-function drawOtaku(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
+function drawOtaku(ctx: CanvasRenderingContext2D, payload: ShareCardPayload): number {
   const seed = hashString(payload.repoName + payload.mode);
-  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H_MAX);
   ctx.strokeStyle = 'rgba(0,0,0,0.04)'; ctx.lineWidth = 1.5;
   const cx = W; const cy = 0;
   for (let a = Math.PI / 2; a < Math.PI * 1.4; a += 0.06) {
     ctx.beginPath(); ctx.moveTo(cx, cy);
     ctx.lineTo(cx + Math.cos(a) * 900, cy + Math.sin(a) * 900); ctx.stroke();
   }
-  ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeRect(12, 12, W - 24, H - 24);
-  ctx.lineWidth = 1; ctx.strokeRect(20, 20, W - 40, H - 40);
-  ctx.fillStyle = '#fff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(W - 190, 36, 160, 44, 12); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(W - 170, 80); ctx.lineTo(W - 155, 96); ctx.lineTo(W - 140, 80);
-  ctx.fill(); ctx.stroke();
-  ctx.font = '700 10px system-ui, sans-serif'; ctx.fillStyle = '#000'; ctx.textAlign = 'center';
-  ctx.fillText('⚡ MAIN CHARACTER', W - 110, 57); ctx.fillText('CODED FR', W - 110, 72);
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.strokeRect(12, 12, W - 24, H_MAX - 24);
+  ctx.lineWidth = 1; ctx.strokeRect(20, 20, W - 40, H_MAX - 40);
   ctx.textAlign = 'left'; ctx.font = '500 10px system-ui, sans-serif';
   ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillText('TALK NORMIE 2 ME  ·  OTAKU ARC', 32, 46);
   ctx.font = '900 28px "Arial Black", system-ui, sans-serif'; ctx.fillStyle = '#000';
   ctx.fillText(payload.repoName, 32, 92);
   ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(32, 102); ctx.lineTo(W - 32, 102); ctx.stroke();
-  ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(32, 108); ctx.lineTo(W - 32, 108); ctx.stroke();
 
-  let y = 132;
-  y = drawSection(ctx, 'LORE DROP', expandPreview(payload.whatIsIt, 460, 2), 32, y, W - 220,
-    '700 10px system-ui, sans-serif', '700 15px system-ui, sans-serif', '#666', '#111', 20, 5);
-  y += 10;
-  y = drawSection(ctx, 'ARC PREVIEW', expandPreview(payload.example, 460, 2), 32, y, W - 220,
-    '700 10px system-ui, sans-serif', '700 15px system-ui, sans-serif', '#666', '#000', 20, 4);
-  y += 10;
-  drawSection(ctx, 'ARC STATUS', expandPreview(payload.status, 340, 2), 32, y, W - 220,
-    '700 10px system-ui, sans-serif', '700 14px system-ui, sans-serif', '#666', '#333', 19, 3);
+  const y = drawRichContent(ctx, payload, {
+    padX: 32,
+    contentW: W - 220,
+    labelFont: '700 10px system-ui, sans-serif',
+    bodyFont: '700 15px system-ui, sans-serif',
+    labelColor: '#666',
+    bodyColor: '#111',
+    hookFont: '700 13px system-ui, sans-serif',
+    hookColor: '#000',
+    hookBg: 'rgba(90,58,138,0.08)',
+    chipBg: '#f0f0f0',
+    chipColor: '#5a3a8a',
+    lineH: 20,
+  }, 118);
 
-  drawOtakuDoodles(ctx, seed, W, H);
-  ctx.textAlign = 'left'; ctx.font = '700 11px system-ui, sans-serif'; ctx.fillStyle = '#333';
-  ctx.fillText(payload.cta, 32, H - 48);
-  ctx.font = '10px system-ui, sans-serif'; ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.fillText(payload.url, 32, H - 28);
+  drawOtakuDoodles(ctx, seed, W, H_MAX);
+  return drawCardFooter(ctx, payload, 32, y + 12,
+    '700 11px system-ui, sans-serif', '#333',
+    '10px system-ui, sans-serif', 'rgba(0,0,0,0.35)');
 }
 
-function drawLinkedIn(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
+function drawLinkedIn(ctx: CanvasRenderingContext2D, payload: ShareCardPayload): number {
   ctx.fillStyle = '#f3f6f8';
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, 0, W, H_MAX);
   ctx.fillStyle = '#0a66c2';
   ctx.fillRect(0, 0, W, 56);
   ctx.font = '700 12px system-ui, sans-serif';
@@ -887,7 +893,7 @@ function drawLinkedIn(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) 
   ctx.lineTo(W - 28, 110);
   ctx.stroke();
 
-  drawRichContent(ctx, payload, {
+  const y = drawRichContent(ctx, payload, {
     padX: 28,
     contentW: W - 56,
     labelFont: '700 10px system-ui, sans-serif',
@@ -902,19 +908,19 @@ function drawLinkedIn(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) 
     lineH: 22,
   }, 118);
 
-  drawCardFooter(ctx, payload, 28,
+  return drawCardFooter(ctx, payload, 28, y + 12,
     '600 12px system-ui, sans-serif', '#0a66c2',
     '11px system-ui, sans-serif', '#666');
 }
 
-function drawGrandma(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
+function drawGrandma(ctx: CanvasRenderingContext2D, payload: ShareCardPayload): number {
   const seed = hashString(payload.repoName + payload.mode);
   ctx.fillStyle = '#fffaf5';
-  ctx.fillRect(0, 0, W, H);
-  drawPaperTexture(ctx, W, H, 0.02);
+  ctx.fillRect(0, 0, W, H_MAX);
+  drawPaperTexture(ctx, W, H_MAX, 0.02);
   ctx.strokeStyle = 'rgba(180,140,100,0.35)';
   ctx.lineWidth = 1;
-  ctx.strokeRect(16, 16, W - 32, H - 32);
+  ctx.strokeRect(16, 16, W - 32, H_MAX - 32);
 
   ctx.textAlign = 'left';
   ctx.font = '500 12px Georgia, serif';
@@ -929,7 +935,7 @@ function drawGrandma(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
   ctx.lineTo(W - 40, 100);
   ctx.stroke();
 
-  drawRichContent(ctx, payload, {
+  const y = drawRichContent(ctx, payload, {
     padX: 40,
     contentW: W - 80,
     labelFont: '600 11px Georgia, serif',
@@ -947,38 +953,47 @@ function drawGrandma(ctx: CanvasRenderingContext2D, payload: ShareCardPayload) {
   ctx.save();
   ctx.globalAlpha = 0.15;
   ctx.font = '48px serif';
-  ctx.fillText('🧶', W - 80, H - 60 + (seed % 20));
+  ctx.fillText('🧶', W - 80, y - 20);
   ctx.restore();
 
-  drawCardFooter(ctx, payload, 40,
+  return drawCardFooter(ctx, payload, 40, y + 12,
     'italic 13px Georgia, serif', '#8a6a50',
     '12px Georgia, serif', 'rgba(138,106,80,0.7)');
 }
+
+type DrawerFn = (ctx: CanvasRenderingContext2D, payload: ShareCardPayload) => number;
 
 export function generateShareCard(payload: ShareCardPayload): Promise<string> {
   return new Promise((resolve) => {
     const canvas = document.createElement('canvas');
     canvas.width = W;
-    // Poetry gets a shorter canvas to eliminate dead space
-    canvas.height = payload.mode === 'poetry' ? H_POETRY : H;
+    canvas.height = H_MAX;
     const ctx = canvas.getContext('2d');
     if (!ctx) { resolve(''); return; }
 
+    let endY = H_MAX;
     switch (payload.mode) {
-      case 'poetry': drawPoetry(ctx, payload); break;
-      case 'emo': drawEmo(ctx, payload); break;
-      case 'bro': drawBro(ctx, payload); break;
-      case 'conspiracy': drawConspiracy(ctx, payload); break;
-      case 'flirty': drawFlirty(ctx, payload); break;
-      case 'brainrot': drawBrainrot(ctx, payload); break;
-      case 'sporty': drawSporty(ctx, payload); break;
-      case 'otaku': drawOtaku(ctx, payload); break;
-      case 'linkedin': drawLinkedIn(ctx, payload); break;
-      case 'grandma': drawGrandma(ctx, payload); break;
-      case 'fullnormie': drawNormie(ctx, payload, true); break;
-      default: drawNormie(ctx, payload, false); break;
+      case 'poetry': endY = drawPoetry(ctx, payload); break;
+      case 'emo': endY = drawEmo(ctx, payload); break;
+      case 'bro': endY = drawBro(ctx, payload); break;
+      case 'conspiracy': endY = drawConspiracy(ctx, payload); break;
+      case 'flirty': endY = drawFlirty(ctx, payload); break;
+      case 'brainrot': endY = drawBrainrot(ctx, payload); break;
+      case 'sporty': endY = drawSporty(ctx, payload); break;
+      case 'otaku': endY = drawOtaku(ctx, payload); break;
+      case 'linkedin': endY = drawLinkedIn(ctx, payload); break;
+      case 'grandma': endY = drawGrandma(ctx, payload); break;
+      case 'fullnormie': endY = drawNormie(ctx, payload, true); break;
+      default: endY = drawNormie(ctx, payload, false); break;
     }
 
-    resolve(canvas.toDataURL('image/png'));
+    const finalH = Math.min(Math.max(endY + 24, H_MIN), H_MAX);
+    const out = document.createElement('canvas');
+    out.width = W;
+    out.height = finalH;
+    const outCtx = out.getContext('2d');
+    if (!outCtx) { resolve(''); return; }
+    outCtx.drawImage(canvas, 0, 0, W, finalH, 0, 0, W, finalH);
+    resolve(out.toDataURL('image/png'));
   });
 }

@@ -45,6 +45,7 @@ type ShareCardPayload = {
   example: string;
   status: string;
   recentActivity?: string;
+  whyStopped?: string;
   cta: string;
   url: string;
   language?: string;
@@ -173,6 +174,21 @@ const SECTION_LABELS: Record<PersonalityMode, string[]> = {
   poetry: ['i.', 'ii.', 'iii.', 'iv.', 'v.'],
 };
 
+const TAGLINES: Record<PersonalityMode, { light: string; dark: string }> = {
+  normie: { light: 'Paste any GitHub link. Get a plain English breakdown.', dark: 'Still plain English, just darker.' },
+  fullnormie: { light: 'Paste a link. Smallest words possible.', dark: 'Simple words. Dark background.' },
+  bro: { light: 'Paste a link. Full breakdown, no cap.', dark: 'Dark mode gains. Same energy.' },
+  flirty: { light: 'Paste a link. Try not to blush.', dark: 'Dark mode. Still flirty.' },
+  emo: { light: 'Paste a link. Explain it like it hurts.', dark: '2am energy. Darker screen.' },
+  brainrot: { light: 'Paste a link fr fr. Get the lore.', dark: 'Dark mode hits different fr fr.' },
+  sporty: { light: 'Paste a link. Run the full scouting report.', dark: 'Film room. Lights off.' },
+  otaku: { light: 'Paste a link. Unlock the arc breakdown.', dark: 'Training arc. Dark mode.' },
+  linkedin: { light: 'Paste a link. Humbled to share what it does.', dark: 'Thought leadership. Dark theme. Agree?' },
+  grandma: { light: "Paste a link, dear. I'll explain it nice and slow.", dark: 'Putting on reading glasses. Dark mode.' },
+  conspiracy: { light: "Paste a link. Read what they don't want you to know.", dark: 'Follow the threads. Lights off.' },
+  poetry: { light: 'Paste a link. Receive a translation in verse.', dark: 'Ink-stained words. Dark page.' },
+};
+
 type Repo = {
   name: string;
   description: string;
@@ -273,6 +289,7 @@ function buildSharePayload(result: any, mode: PersonalityMode): ShareCardPayload
 
   const status = proseSections[2] || '';
   const recentActivity = proseSections[3] || '';
+  const whyStopped = proseSections[4] || '';
 
   return {
     repoName: result?.meta?.name || 'repo',
@@ -282,6 +299,7 @@ function buildSharePayload(result: any, mode: PersonalityMode): ShareCardPayload
     example,
     status,
     recentActivity,
+    whyStopped,
     cta: getModeCTA(mode),
     url: 'https://talk-normie-2-me.vercel.app',
     language: result?.meta?.language,
@@ -679,8 +697,12 @@ function App({ dark, setDark }: { dark: boolean; setDark: React.Dispatch<React.S
   };
 
   return (
-    <main className={dark ? styles.mainDark : styles.mainLight}>
-      <div className={styles.container} data-mode={mode} data-theme={dark ? 'dark' : 'light'}>
+    <main
+      className={dark ? styles.mainDark : styles.mainLight}
+      data-mode={mode}
+      data-theme={dark ? 'dark' : 'light'}
+    >
+      <div className={styles.container}>
         <div className={styles.header}>
           <div className={styles.logo}>
             <div className={dark ? styles.logoIconDark : styles.logoIconLight}>
@@ -724,7 +746,7 @@ function App({ dark, setDark }: { dark: boolean; setDark: React.Dispatch<React.S
         </div>
 
         <p className={dark ? styles.taglineDark : styles.taglineLight}>
-          {dark ? 'Still plain English, just darker.' : 'Paste any GitHub link. Get a plain English breakdown.'}
+          {dark ? TAGLINES[mode].dark : TAGLINES[mode].light}
         </p>
 
         {browseOpen && (
@@ -897,6 +919,12 @@ function App({ dark, setDark }: { dark: boolean; setDark: React.Dispatch<React.S
                   Re-explain in {currentMode.label}
                 </button>
               </div>
+            )}
+
+            {result && activeUrl && !needsReexplain && (
+              <p className={dark ? styles.modeHintDark : styles.modeHintLight}>
+                Cycling modes is free. Re-explain uses another explain.
+              </p>
             )}
 
             {result.shareHook && mode !== 'poetry' && (
